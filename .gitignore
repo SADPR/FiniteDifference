@@ -1,0 +1,8 @@
+BurgersFD_CleanCoarse/runs/
+BurgersFD_CleanCoarse/modes/
+BurgersFD_CleanCoarse/param_snaps/
+*.npy
+BurgersFD_CleanCoarse/__pycache__/
+*.pkl
+*.png
+*.npz
