@@ -91,9 +91,9 @@ def main(mu1= 4.74, mu2=0.02, compute_ecsw = True):
         weights[hyper_reduction_element_selector.z] = hyper_reduction_element_selector.w
 
         #weights, _ = nnls(C, b, maxiter=99999999)
-        print('nnls solve time: {}'.format(time.time() - t1))
+        print('ECM solve time: {}'.format(time.time() - t1))
 
-        print('nnls solver residual: {}'.format(
+        print('ECM solver residual: {}'.format(
             np.linalg.norm(C @ weights - b) / np.linalg.norm(b)))
 
         weights = weights.reshape((num_cells_y - 2 * nn_y, num_cells_x - (nn_xl + nn_xr)))
