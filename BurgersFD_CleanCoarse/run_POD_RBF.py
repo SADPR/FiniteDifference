@@ -30,7 +30,7 @@ def compare_snaps(snaps_to_plot, inds_to_plot, labels, colors, linewidths):
                color=colors[i],
                linewidth=linewidths[i])
 
-def main(mu1=4.56, mu2=0.019):
+def main(mu1=4.75, mu2=0.02):
     # Define the grid and initial conditions
     grid_x, grid_y = make_2D_grid(XL, XU, YL, YU, NUM_CELLS_X, NUM_CELLS_Y)
     w0 = np.ones((NUM_CELLS_X * NUM_CELLS_Y * 2,))  # Example initial condition
@@ -58,14 +58,14 @@ def main(mu1=4.56, mu2=0.019):
 
     # Set epsilon and neighbors based on the value of mu1
     if mu1 == 4.75:
-        epsilon = 3
-        neighbors = 100
+        epsilon = 0.01
+        neighbors = 20
     elif mu1 == 4.56:
         epsilon = 0.01
-        neighbors = 50
+        neighbors = 20
     elif mu1 == 5.19:
-        epsilon = 5
-        neighbors = 100
+        epsilon = 0.01
+        neighbors = 20
     else:
         raise ValueError(f"Unsupported mu1 value: {mu1}")
 
@@ -78,13 +78,15 @@ def main(mu1=4.56, mu2=0.019):
 
     # Time-stepping to compute the Reduced-Order Model (ROM) using POD-RBF
     t0 = time.time()
-    pod_rbf_prom_snaps, man_times = inviscid_burgers_pod_rbf_2D(
-        grid_x, grid_y, w0, DT, NUM_STEPS, mu, U_p, U_s, kdtree, q_p_train, q_s_train, epsilon, neighbors, scaler
+    pod_rbf_prom_snaps, rbf_times = inviscid_burgers_pod_rbf_2D(
+        grid_x, grid_y, w0, DT, NUM_STEPS, mu, U_p, U_s, kdtree, q_p_train, q_s_train, epsilon, neighbors, scaler, kernel_type="gaussian"
     )
     elapsed_time = time.time() - t0
-    man_its, man_jac, man_res, man_ls = man_times
+    rbf_its, rbf_jac, rbf_res, rbf_ls = rbf_times
 
     print(f'Elapsed ROM time: {elapsed_time:.3e} seconds')
+
+    print(f'rbf_its: {rbf_its:.2f}, rbf_jac: {rbf_jac:.2f}, rbf_res: {rbf_res:.2f}, rbf_ls: {rbf_ls:.2f}')
 
     # Calculate relative error
     relative_error = 100 * np.linalg.norm(hdm_snaps - pod_rbf_prom_snaps) / np.linalg.norm(hdm_snaps)

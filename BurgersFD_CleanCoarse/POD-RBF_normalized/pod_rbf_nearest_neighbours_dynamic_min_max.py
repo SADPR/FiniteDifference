@@ -253,7 +253,7 @@ def main():
 
     # Normalize q_p using Min-Max normalization and save the scaler
     print("Normalizing q_p data using Min-Max normalization...")
-    scaler = MinMaxScaler()
+    scaler = MinMaxScaler(feature_range=(-1, 1))
     q_p_normalized = scaler.fit_transform(q_p.T).T  # Note the transpose operations
     print("Normalization complete.")
 

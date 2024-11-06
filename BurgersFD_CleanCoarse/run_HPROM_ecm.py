@@ -24,7 +24,7 @@ plt.rcParams.update({
     "font.family": ["STIXGeneral"]})
 plt.rc('font', size=13)
 
-def main(mu1= 4.74, mu2=0.02, compute_ecsw = False):
+def main(mu1= 4.74, mu2=0.02, compute_ecsw = True):
 
     snap_folder = 'param_snaps'
     num_vecs = 95
@@ -55,7 +55,7 @@ def main(mu1= 4.74, mu2=0.02, compute_ecsw = False):
     # Perform ECSW hyper-reduction
     # Specify if you want to compute it or not (it's loaded below if you don't compute)
     if compute_ecsw:
-        snap_sample_factor = 100
+        snap_sample_factor = 10
         Clist = []
         for imu, mu in enumerate(mu_samples):
             mu_snaps = all_snaps_list[imu]

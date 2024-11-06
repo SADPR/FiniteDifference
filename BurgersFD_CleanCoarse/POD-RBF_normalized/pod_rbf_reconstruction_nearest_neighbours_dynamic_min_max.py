@@ -93,7 +93,7 @@ def interpolate_on_the_fly(kdtree, q_p_train, q_s_train, x_new, epsilon, neighbo
         print(f"Extracting neighbors took: {extract_time - kdtree_time:.6f} seconds")
 
     dists_neighbors = np.linalg.norm(X_neighbors[:, np.newaxis] - X_neighbors[np.newaxis, :], axis=-1)
-    Phi_neighbors = linear_rbf(dists_neighbors, epsilon)
+    Phi_neighbors = gaussian_rbf(dists_neighbors, epsilon)
     rbf_matrix_time = time.time()
     if print_times:
         print(f"RBF matrix computation took: {rbf_matrix_time - extract_time:.6f} seconds")
@@ -107,7 +107,7 @@ def interpolate_on_the_fly(kdtree, q_p_train, q_s_train, x_new, epsilon, neighbo
     if print_times:
         print(f"Solving the linear system took: {solve_time - rbf_matrix_time:.6f} seconds")
 
-    rbf_values = linear_rbf(dist, epsilon)
+    rbf_values = gaussian_rbf(dist, epsilon)
     rbf_eval_time = time.time()
     if print_times:
         print(f"RBF evaluation for new point took: {rbf_eval_time - solve_time:.6f} seconds")
@@ -245,8 +245,8 @@ if __name__ == '__main__':
         print("Scaler file 'modes/scaler.pkl' not found.")
         exit(1)
 
-    epsilon = 5
-    neighbors = 200
+    epsilon = 0.01
+    neighbors = 20
     r = 10  # Number of primary modes used
     num_modes = 150
 
