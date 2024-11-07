@@ -225,6 +225,12 @@ class EmpiricalCubatureMethod():
 
             MaximumLengthZ = max(MaximumLengthZ, np.size(self.z))
             k = k+1
+            
+            '''
+            #Hardcoded, erase this.
+            if k>1200:
+                break
+            '''
 
             if k-MaximumLengthZ>1000 and ExpandedSetFlag:
                 """

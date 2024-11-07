@@ -49,7 +49,7 @@ def main(mu1=4.75, mu2=0.02, save_snaps=True):
         print(f'HDM snapshots saved as hdm_snaps_mu1_{mu_rom[0]:.2f}_mu2_{mu_rom[1]:.3f}.npy')
 
     # Return elapsed time and HDM snapshots
-    return elapsed_time, hdm_snaps
+    return elapsed_time, 0
 
 # Run the FOM if the script is executed
 if __name__ == "__main__":

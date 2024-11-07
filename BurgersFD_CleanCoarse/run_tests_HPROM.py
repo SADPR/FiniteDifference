@@ -1,9 +1,9 @@
 import os
 import numpy as np
 import run_fom
-import run_HPROM
-import run_HRNM
-import run_POD_RBF_HPROM
+import run_HPROM_ecm
+import run_HRNM_ecm
+import run_POD_RBF_HPROM_ecm
 
 # Define the mu1 and mu2 parameters
 mu1_values = [5.19, 4.56, 4.75]
@@ -63,7 +63,7 @@ for i, (mu1, mu2) in enumerate(zip(mu1_values, mu2_values)):
     hprom_file = f"hprom_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy"
     if not check_if_exists(hprom_file) or hprom_times[i] is None:
         print(f"HPROM results not found or missing for mu1 = {mu1}, mu2 = {mu2}. Running HPROM...")
-        hprom_time, hprom_error = run_HPROM.main(mu1, mu2)
+        hprom_time, hprom_error = run_HPROM_ecm.main(mu1, mu2)
         hprom_times[i] = hprom_time
         hprom_errors[i] = hprom_error
     else:
@@ -73,7 +73,7 @@ for i, (mu1, mu2) in enumerate(zip(mu1_values, mu2_values)):
     hrnm_file = f"hrnm_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy"
     if not check_if_exists(hrnm_file) or hrnm_times[i] is None:
         print(f"HRNM results not found or missing for mu1 = {mu1}, mu2 = {mu2}. Running HRNM...")
-        hrnm_time, hrnm_error = run_HRNM.main(mu1, mu2)
+        hrnm_time, hrnm_error = run_HRNM_ecm.main(mu1, mu2)
         hrnm_times[i] = hrnm_time
         hrnm_errors[i] = hrnm_error
     else:
@@ -83,7 +83,7 @@ for i, (mu1, mu2) in enumerate(zip(mu1_values, mu2_values)):
     pod_rbf_hprom_file = f"pod_rbf_hprom_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy"
     if not check_if_exists(pod_rbf_hprom_file) or pod_rbf_hprom_times[i] is None:
         print(f"POD-RBF HPROM results not found or missing for mu1 = {mu1}, mu2 = {mu2}. Running POD-RBF HPROM...")
-        pod_rbf_hprom_time, pod_rbf_hprom_error = run_POD_RBF_HPROM.main(mu1, mu2)
+        pod_rbf_hprom_time, pod_rbf_hprom_error = run_POD_RBF_HPROM_ecm.main(mu1, mu2)
         pod_rbf_hprom_times[i] = pod_rbf_hprom_time
         pod_rbf_hprom_errors[i] = pod_rbf_hprom_error
     else:

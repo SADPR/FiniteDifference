@@ -1,0 +1,292 @@
+Loading saved snaps for mu1=4.75, mu2=0.02
+Loaded HDM snapshot for mu1=4.75, mu2=0.02
+Loaded training data and KDTree successfully.
+Loaded POD basis matrices (U_p and U_s) successfully.
+Total reconstruction process took: 71.614204 seconds
+gaussian Kernel | epsilon=1000, neighbors=5: POD-RBF Reconstruction error: 1.204849e-01
+Total reconstruction process took: 72.253804 seconds
+gaussian Kernel | epsilon=1000, neighbors=10: POD-RBF Reconstruction error: 1.204849e-01
+Total reconstruction process took: 72.377219 seconds
+gaussian Kernel | epsilon=1000, neighbors=20: POD-RBF Reconstruction error: 1.204849e-01
+Total reconstruction process took: 72.953169 seconds
+gaussian Kernel | epsilon=1000, neighbors=50: POD-RBF Reconstruction error: 1.204849e-01
+Total reconstruction process took: 72.758393 seconds
+gaussian Kernel | epsilon=1000, neighbors=100: POD-RBF Reconstruction error: 1.204849e-01
+Total reconstruction process took: 74.084324 seconds
+gaussian Kernel | epsilon=1000, neighbors=200: POD-RBF Reconstruction error: 1.204849e-01
+Total reconstruction process took: 72.095695 seconds
+gaussian Kernel | epsilon=100, neighbors=5: POD-RBF Reconstruction error: 1.204849e-01
+Total reconstruction process took: 71.931946 seconds
+gaussian Kernel | epsilon=100, neighbors=10: POD-RBF Reconstruction error: 1.204849e-01
+Total reconstruction process took: 71.736618 seconds
+gaussian Kernel | epsilon=100, neighbors=20: POD-RBF Reconstruction error: 1.204849e-01
+Total reconstruction process took: 72.046987 seconds
+gaussian Kernel | epsilon=100, neighbors=50: POD-RBF Reconstruction error: 1.204849e-01
+Total reconstruction process took: 72.792809 seconds
+gaussian Kernel | epsilon=100, neighbors=100: POD-RBF Reconstruction error: 1.204849e-01
+Total reconstruction process took: 73.987916 seconds
+gaussian Kernel | epsilon=100, neighbors=200: POD-RBF Reconstruction error: 1.204849e-01
+Total reconstruction process took: 71.847520 seconds
+gaussian Kernel | epsilon=10, neighbors=5: POD-RBF Reconstruction error: 1.204849e-01
+Total reconstruction process took: 71.957375 seconds
+gaussian Kernel | epsilon=10, neighbors=10: POD-RBF Reconstruction error: 1.204849e-01
+Total reconstruction process took: 71.705555 seconds
+gaussian Kernel | epsilon=10, neighbors=20: POD-RBF Reconstruction error: 1.204849e-01
+Total reconstruction process took: 72.063569 seconds
+gaussian Kernel | epsilon=10, neighbors=50: POD-RBF Reconstruction error: 1.204849e-01
+Total reconstruction process took: 72.754168 seconds
+gaussian Kernel | epsilon=10, neighbors=100: POD-RBF Reconstruction error: 1.204849e-01
+Total reconstruction process took: 73.921798 seconds
+gaussian Kernel | epsilon=10, neighbors=200: POD-RBF Reconstruction error: 1.204849e-01
+Total reconstruction process took: 73.865128 seconds
+gaussian Kernel | epsilon=1, neighbors=5: POD-RBF Reconstruction error: 1.202568e-01
+Total reconstruction process took: 73.930858 seconds
+gaussian Kernel | epsilon=1, neighbors=10: POD-RBF Reconstruction error: 1.202568e-01
+Total reconstruction process took: 73.802300 seconds
+gaussian Kernel | epsilon=1, neighbors=20: POD-RBF Reconstruction error: 1.202568e-01
+Total reconstruction process took: 73.953302 seconds
+gaussian Kernel | epsilon=1, neighbors=50: POD-RBF Reconstruction error: 1.202568e-01
+Total reconstruction process took: 74.737531 seconds
+gaussian Kernel | epsilon=1, neighbors=100: POD-RBF Reconstruction error: 1.202568e-01
+Total reconstruction process took: 75.991431 seconds
+gaussian Kernel | epsilon=1, neighbors=200: POD-RBF Reconstruction error: 1.202568e-01
+Total reconstruction process took: 71.763615 seconds
+gaussian Kernel | epsilon=0.1, neighbors=5: POD-RBF Reconstruction error: 1.165904e-01
+Total reconstruction process took: 71.998399 seconds
+gaussian Kernel | epsilon=0.1, neighbors=10: POD-RBF Reconstruction error: 1.165455e-01
+Total reconstruction process took: 71.786523 seconds
+gaussian Kernel | epsilon=0.1, neighbors=20: POD-RBF Reconstruction error: 1.165308e-01
+Total reconstruction process took: 72.208758 seconds
+gaussian Kernel | epsilon=0.1, neighbors=50: POD-RBF Reconstruction error: 1.165349e-01
+Total reconstruction process took: 73.179764 seconds
+gaussian Kernel | epsilon=0.1, neighbors=100: POD-RBF Reconstruction error: 1.165343e-01
+Total reconstruction process took: 76.092937 seconds
+gaussian Kernel | epsilon=0.1, neighbors=200: POD-RBF Reconstruction error: 1.165343e-01
+Total reconstruction process took: 71.727754 seconds
+gaussian Kernel | epsilon=0.01, neighbors=5: POD-RBF Reconstruction error: 6.832137e-02
+Total reconstruction process took: 71.969538 seconds
+gaussian Kernel | epsilon=0.01, neighbors=10: POD-RBF Reconstruction error: 6.638176e-02
+Total reconstruction process took: 72.043873 seconds
+gaussian Kernel | epsilon=0.01, neighbors=20: POD-RBF Reconstruction error: 6.206313e-02
+Total reconstruction process took: 71.982684 seconds
+gaussian Kernel | epsilon=0.01, neighbors=50: POD-RBF Reconstruction error: 6.112959e-02
+Total reconstruction process took: 72.709581 seconds
+gaussian Kernel | epsilon=0.01, neighbors=100: POD-RBF Reconstruction error: 6.105195e-02
+Total reconstruction process took: 74.143404 seconds
+gaussian Kernel | epsilon=0.01, neighbors=200: POD-RBF Reconstruction error: 6.104085e-02
+Total reconstruction process took: 72.034770 seconds
+gaussian Kernel | epsilon=0.001, neighbors=5: POD-RBF Reconstruction error: 9.568057e-02
+Total reconstruction process took: 71.955980 seconds
+gaussian Kernel | epsilon=0.001, neighbors=10: POD-RBF Reconstruction error: 2.142909e-01
+Total reconstruction process took: 72.040119 seconds
+gaussian Kernel | epsilon=0.001, neighbors=20: POD-RBF Reconstruction error: 3.709653e-01
+Total reconstruction process took: 72.109400 seconds
+gaussian Kernel | epsilon=0.001, neighbors=50: POD-RBF Reconstruction error: 7.767388e-01
+Total reconstruction process took: 72.729301 seconds
+gaussian Kernel | epsilon=0.001, neighbors=100: POD-RBF Reconstruction error: 7.426290e-01
+Total reconstruction process took: 74.130510 seconds
+gaussian Kernel | epsilon=0.001, neighbors=200: POD-RBF Reconstruction error: 7.867756e-01
+Total reconstruction process took: 71.940949 seconds
+gaussian Kernel | epsilon=0.0001, neighbors=5: POD-RBF Reconstruction error: 9.403372e-02
+Total reconstruction process took: 72.006527 seconds
+gaussian Kernel | epsilon=0.0001, neighbors=10: POD-RBF Reconstruction error: 1.644577e-01
+Total reconstruction process took: 71.994698 seconds
+gaussian Kernel | epsilon=0.0001, neighbors=20: POD-RBF Reconstruction error: 5.758043e-01
+Total reconstruction process took: 72.214556 seconds
+gaussian Kernel | epsilon=0.0001, neighbors=50: POD-RBF Reconstruction error: 4.614007e-01
+Total reconstruction process took: 72.834274 seconds
+gaussian Kernel | epsilon=0.0001, neighbors=100: POD-RBF Reconstruction error: 1.536197e-01
+Total reconstruction process took: 74.454935 seconds
+gaussian Kernel | epsilon=0.0001, neighbors=200: POD-RBF Reconstruction error: 5.546261e-02
+Total reconstruction process took: 71.945063 seconds
+inverse_multiquadric Kernel | epsilon=1000, neighbors=5: POD-RBF Reconstruction error: 1.204708e-01
+Total reconstruction process took: 72.261372 seconds
+inverse_multiquadric Kernel | epsilon=1000, neighbors=10: POD-RBF Reconstruction error: 1.204625e-01
+Total reconstruction process took: 72.205784 seconds
+inverse_multiquadric Kernel | epsilon=1000, neighbors=20: POD-RBF Reconstruction error: 1.204507e-01
+Total reconstruction process took: 72.388608 seconds
+inverse_multiquadric Kernel | epsilon=1000, neighbors=50: POD-RBF Reconstruction error: 1.204294e-01
+Total reconstruction process took: 72.858899 seconds
+inverse_multiquadric Kernel | epsilon=1000, neighbors=100: POD-RBF Reconstruction error: 1.204095e-01
+Total reconstruction process took: 74.046602 seconds
+inverse_multiquadric Kernel | epsilon=1000, neighbors=200: POD-RBF Reconstruction error: 1.203913e-01
+Total reconstruction process took: 72.218194 seconds
+inverse_multiquadric Kernel | epsilon=100, neighbors=5: POD-RBF Reconstruction error: 1.203449e-01
+Total reconstruction process took: 72.010906 seconds
+inverse_multiquadric Kernel | epsilon=100, neighbors=10: POD-RBF Reconstruction error: 1.202626e-01
+Total reconstruction process took: 72.020005 seconds
+inverse_multiquadric Kernel | epsilon=100, neighbors=20: POD-RBF Reconstruction error: 1.201465e-01
+Total reconstruction process took: 72.187810 seconds
+inverse_multiquadric Kernel | epsilon=100, neighbors=50: POD-RBF Reconstruction error: 1.199380e-01
+Total reconstruction process took: 72.614657 seconds
+inverse_multiquadric Kernel | epsilon=100, neighbors=100: POD-RBF Reconstruction error: 1.197439e-01
+Total reconstruction process took: 74.110098 seconds
+inverse_multiquadric Kernel | epsilon=100, neighbors=200: POD-RBF Reconstruction error: 1.195687e-01
+Total reconstruction process took: 71.912354 seconds
+inverse_multiquadric Kernel | epsilon=10, neighbors=5: POD-RBF Reconstruction error: 1.191614e-01
+Total reconstruction process took: 72.018774 seconds
+inverse_multiquadric Kernel | epsilon=10, neighbors=10: POD-RBF Reconstruction error: 1.184228e-01
+Total reconstruction process took: 71.798332 seconds
+inverse_multiquadric Kernel | epsilon=10, neighbors=20: POD-RBF Reconstruction error: 1.174015e-01
+Total reconstruction process took: 71.970634 seconds
+inverse_multiquadric Kernel | epsilon=10, neighbors=50: POD-RBF Reconstruction error: 1.156477e-01
+Total reconstruction process took: 72.608086 seconds
+inverse_multiquadric Kernel | epsilon=10, neighbors=100: POD-RBF Reconstruction error: 1.140973e-01
+Total reconstruction process took: 73.884449 seconds
+inverse_multiquadric Kernel | epsilon=10, neighbors=200: POD-RBF Reconstruction error: 1.127885e-01
+Total reconstruction process took: 71.760042 seconds
+inverse_multiquadric Kernel | epsilon=1, neighbors=5: POD-RBF Reconstruction error: 1.110682e-01
+Total reconstruction process took: 71.910563 seconds
+inverse_multiquadric Kernel | epsilon=1, neighbors=10: POD-RBF Reconstruction error: 1.067584e-01
+Total reconstruction process took: 71.949811 seconds
+inverse_multiquadric Kernel | epsilon=1, neighbors=20: POD-RBF Reconstruction error: 1.011471e-01
+Total reconstruction process took: 71.934078 seconds
+inverse_multiquadric Kernel | epsilon=1, neighbors=50: POD-RBF Reconstruction error: 9.324109e-02
+Total reconstruction process took: 72.611903 seconds
+inverse_multiquadric Kernel | epsilon=1, neighbors=100: POD-RBF Reconstruction error: 8.801080e-02
+Total reconstruction process took: 73.997988 seconds
+inverse_multiquadric Kernel | epsilon=1, neighbors=200: POD-RBF Reconstruction error: 8.493484e-02
+Total reconstruction process took: 71.770160 seconds
+inverse_multiquadric Kernel | epsilon=0.1, neighbors=5: POD-RBF Reconstruction error: 8.576904e-02
+Total reconstruction process took: 71.861703 seconds
+inverse_multiquadric Kernel | epsilon=0.1, neighbors=10: POD-RBF Reconstruction error: 7.634125e-02
+Total reconstruction process took: 71.760851 seconds
+inverse_multiquadric Kernel | epsilon=0.1, neighbors=20: POD-RBF Reconstruction error: 6.471490e-02
+Total reconstruction process took: 71.987906 seconds
+inverse_multiquadric Kernel | epsilon=0.1, neighbors=50: POD-RBF Reconstruction error: 5.590940e-02
+Total reconstruction process took: 72.688590 seconds
+inverse_multiquadric Kernel | epsilon=0.1, neighbors=100: POD-RBF Reconstruction error: 5.345223e-02
+Total reconstruction process took: 73.951837 seconds
+inverse_multiquadric Kernel | epsilon=0.1, neighbors=200: POD-RBF Reconstruction error: 5.305198e-02
+Total reconstruction process took: 71.778649 seconds
+inverse_multiquadric Kernel | epsilon=0.01, neighbors=5: POD-RBF Reconstruction error: 3.813485e-02
+Total reconstruction process took: 71.931083 seconds
+inverse_multiquadric Kernel | epsilon=0.01, neighbors=10: POD-RBF Reconstruction error: 3.716643e-02
+Total reconstruction process took: 71.759129 seconds
+inverse_multiquadric Kernel | epsilon=0.01, neighbors=20: POD-RBF Reconstruction error: 2.902152e-02
+Total reconstruction process took: 71.901561 seconds
+inverse_multiquadric Kernel | epsilon=0.01, neighbors=50: POD-RBF Reconstruction error: 2.714005e-02
+Total reconstruction process took: 72.511961 seconds
+inverse_multiquadric Kernel | epsilon=0.01, neighbors=100: POD-RBF Reconstruction error: 2.588336e-02
+Total reconstruction process took: 74.234541 seconds
+inverse_multiquadric Kernel | epsilon=0.01, neighbors=200: POD-RBF Reconstruction error: 2.596782e-02
+Total reconstruction process took: 71.861733 seconds
+inverse_multiquadric Kernel | epsilon=0.001, neighbors=5: POD-RBF Reconstruction error: 5.923116e-02
+Total reconstruction process took: 71.970332 seconds
+inverse_multiquadric Kernel | epsilon=0.001, neighbors=10: POD-RBF Reconstruction error: 9.568422e-02
+Total reconstruction process took: 71.803145 seconds
+inverse_multiquadric Kernel | epsilon=0.001, neighbors=20: POD-RBF Reconstruction error: 1.446076e-01
+Total reconstruction process took: 72.008825 seconds
+inverse_multiquadric Kernel | epsilon=0.001, neighbors=50: POD-RBF Reconstruction error: 1.582454e-01
+Total reconstruction process took: 72.621148 seconds
+inverse_multiquadric Kernel | epsilon=0.001, neighbors=100: POD-RBF Reconstruction error: 1.770078e-01
+Total reconstruction process took: 73.974364 seconds
+inverse_multiquadric Kernel | epsilon=0.001, neighbors=200: POD-RBF Reconstruction error: 1.354406e-01
+Total reconstruction process took: 71.660552 seconds
+inverse_multiquadric Kernel | epsilon=0.0001, neighbors=5: POD-RBF Reconstruction error: 7.287922e-02
+Total reconstruction process took: 71.905965 seconds
+inverse_multiquadric Kernel | epsilon=0.0001, neighbors=10: POD-RBF Reconstruction error: 1.183642e-01
+Total reconstruction process took: 71.837779 seconds
+inverse_multiquadric Kernel | epsilon=0.0001, neighbors=20: POD-RBF Reconstruction error: 3.756173e-01
+Total reconstruction process took: 72.114176 seconds
+inverse_multiquadric Kernel | epsilon=0.0001, neighbors=50: POD-RBF Reconstruction error: 2.716157e-01
+Total reconstruction process took: 72.848371 seconds
+inverse_multiquadric Kernel | epsilon=0.0001, neighbors=100: POD-RBF Reconstruction error: 1.075445e-01
+Total reconstruction process took: 74.089640 seconds
+inverse_multiquadric Kernel | epsilon=0.0001, neighbors=200: POD-RBF Reconstruction error: 5.152375e-02
+Total reconstruction process took: 71.629783 seconds
+linear Kernel | epsilon=1000, neighbors=5: POD-RBF Reconstruction error: 1.931432e-01
+Total reconstruction process took: 71.858739 seconds
+linear Kernel | epsilon=1000, neighbors=10: POD-RBF Reconstruction error: 5.868733e-02
+Total reconstruction process took: 71.842727 seconds
+linear Kernel | epsilon=1000, neighbors=20: POD-RBF Reconstruction error: 2.949177e-02
+Total reconstruction process took: 72.033004 seconds
+linear Kernel | epsilon=1000, neighbors=50: POD-RBF Reconstruction error: 2.675470e-02
+Total reconstruction process took: 72.861540 seconds
+linear Kernel | epsilon=1000, neighbors=100: POD-RBF Reconstruction error: 2.569595e-02
+Total reconstruction process took: 73.841379 seconds
+linear Kernel | epsilon=1000, neighbors=200: POD-RBF Reconstruction error: 2.607472e-02
+Total reconstruction process took: 71.701514 seconds
+linear Kernel | epsilon=100, neighbors=5: POD-RBF Reconstruction error: 1.931432e-01
+Total reconstruction process took: 71.930863 seconds
+linear Kernel | epsilon=100, neighbors=10: POD-RBF Reconstruction error: 5.868733e-02
+Total reconstruction process took: 71.793730 seconds
+linear Kernel | epsilon=100, neighbors=20: POD-RBF Reconstruction error: 2.949177e-02
+Total reconstruction process took: 72.047150 seconds
+linear Kernel | epsilon=100, neighbors=50: POD-RBF Reconstruction error: 2.675470e-02
+Total reconstruction process took: 72.804482 seconds
+linear Kernel | epsilon=100, neighbors=100: POD-RBF Reconstruction error: 2.569595e-02
+Total reconstruction process took: 74.019311 seconds
+linear Kernel | epsilon=100, neighbors=200: POD-RBF Reconstruction error: 2.607472e-02
+Total reconstruction process took: 71.880010 seconds
+linear Kernel | epsilon=10, neighbors=5: POD-RBF Reconstruction error: 1.931432e-01
+Total reconstruction process took: 71.878738 seconds
+linear Kernel | epsilon=10, neighbors=10: POD-RBF Reconstruction error: 5.868733e-02
+Total reconstruction process took: 71.768726 seconds
+linear Kernel | epsilon=10, neighbors=20: POD-RBF Reconstruction error: 2.949177e-02
+Total reconstruction process took: 71.939418 seconds
+linear Kernel | epsilon=10, neighbors=50: POD-RBF Reconstruction error: 2.675470e-02
+Total reconstruction process took: 72.629403 seconds
+linear Kernel | epsilon=10, neighbors=100: POD-RBF Reconstruction error: 2.569595e-02
+Total reconstruction process took: 73.844527 seconds
+linear Kernel | epsilon=10, neighbors=200: POD-RBF Reconstruction error: 2.607472e-02
+Total reconstruction process took: 71.842473 seconds
+linear Kernel | epsilon=1, neighbors=5: POD-RBF Reconstruction error: 1.931432e-01
+Total reconstruction process took: 71.954844 seconds
+linear Kernel | epsilon=1, neighbors=10: POD-RBF Reconstruction error: 5.868733e-02
+Total reconstruction process took: 71.837219 seconds
+linear Kernel | epsilon=1, neighbors=20: POD-RBF Reconstruction error: 2.949177e-02
+Total reconstruction process took: 72.000874 seconds
+linear Kernel | epsilon=1, neighbors=50: POD-RBF Reconstruction error: 2.675470e-02
+Total reconstruction process took: 72.610291 seconds
+linear Kernel | epsilon=1, neighbors=100: POD-RBF Reconstruction error: 2.569595e-02
+Total reconstruction process took: 73.925503 seconds
+linear Kernel | epsilon=1, neighbors=200: POD-RBF Reconstruction error: 2.607472e-02
+Total reconstruction process took: 71.772382 seconds
+linear Kernel | epsilon=0.1, neighbors=5: POD-RBF Reconstruction error: 1.931432e-01
+Total reconstruction process took: 72.424291 seconds
+linear Kernel | epsilon=0.1, neighbors=10: POD-RBF Reconstruction error: 5.868733e-02
+Total reconstruction process took: 71.904622 seconds
+linear Kernel | epsilon=0.1, neighbors=20: POD-RBF Reconstruction error: 2.949177e-02
+Total reconstruction process took: 72.187045 seconds
+linear Kernel | epsilon=0.1, neighbors=50: POD-RBF Reconstruction error: 2.675470e-02
+Total reconstruction process took: 72.946838 seconds
+linear Kernel | epsilon=0.1, neighbors=100: POD-RBF Reconstruction error: 2.569595e-02
+Total reconstruction process took: 74.214505 seconds
+linear Kernel | epsilon=0.1, neighbors=200: POD-RBF Reconstruction error: 2.607472e-02
+Total reconstruction process took: 71.711848 seconds
+linear Kernel | epsilon=0.01, neighbors=5: POD-RBF Reconstruction error: 1.931432e-01
+Total reconstruction process took: 71.760332 seconds
+linear Kernel | epsilon=0.01, neighbors=10: POD-RBF Reconstruction error: 5.868733e-02
+Total reconstruction process took: 71.729628 seconds
+linear Kernel | epsilon=0.01, neighbors=20: POD-RBF Reconstruction error: 2.949177e-02
+Total reconstruction process took: 71.953630 seconds
+linear Kernel | epsilon=0.01, neighbors=50: POD-RBF Reconstruction error: 2.675470e-02
+Total reconstruction process took: 72.579225 seconds
+linear Kernel | epsilon=0.01, neighbors=100: POD-RBF Reconstruction error: 2.569595e-02
+Total reconstruction process took: 73.919956 seconds
+linear Kernel | epsilon=0.01, neighbors=200: POD-RBF Reconstruction error: 2.607472e-02
+Total reconstruction process took: 71.819940 seconds
+linear Kernel | epsilon=0.001, neighbors=5: POD-RBF Reconstruction error: 1.931432e-01
+Total reconstruction process took: 71.875444 seconds
+linear Kernel | epsilon=0.001, neighbors=10: POD-RBF Reconstruction error: 5.868733e-02
+Total reconstruction process took: 71.949445 seconds
+linear Kernel | epsilon=0.001, neighbors=20: POD-RBF Reconstruction error: 2.949177e-02
+Total reconstruction process took: 71.843917 seconds
+linear Kernel | epsilon=0.001, neighbors=50: POD-RBF Reconstruction error: 2.675470e-02
+Total reconstruction process took: 72.674360 seconds
+linear Kernel | epsilon=0.001, neighbors=100: POD-RBF Reconstruction error: 2.569595e-02
+Total reconstruction process took: 74.160506 seconds
+linear Kernel | epsilon=0.001, neighbors=200: POD-RBF Reconstruction error: 2.607472e-02
+Total reconstruction process took: 71.905456 seconds
+linear Kernel | epsilon=0.0001, neighbors=5: POD-RBF Reconstruction error: 1.931432e-01
+Total reconstruction process took: 72.238031 seconds
+linear Kernel | epsilon=0.0001, neighbors=10: POD-RBF Reconstruction error: 5.868733e-02
+Total reconstruction process took: 71.975760 seconds
+linear Kernel | epsilon=0.0001, neighbors=20: POD-RBF Reconstruction error: 2.949177e-02
+Total reconstruction process took: 72.087461 seconds
+linear Kernel | epsilon=0.0001, neighbors=50: POD-RBF Reconstruction error: 2.675470e-02
+Total reconstruction process took: 72.878210 seconds
+linear Kernel | epsilon=0.0001, neighbors=100: POD-RBF Reconstruction error: 2.569595e-02
+Total reconstruction process took: 73.909719 seconds
+linear Kernel | epsilon=0.0001, neighbors=200: POD-RBF Reconstruction error: 2.607472e-02

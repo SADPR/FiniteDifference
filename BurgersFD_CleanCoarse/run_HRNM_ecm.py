@@ -95,7 +95,7 @@ def get_snapshot_params():
       mu_samples += [[mu1, mu2]]
   return mu_samples
 
-def main(mu1=4.56, mu2=0.019, compute_ecsw=True):
+def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
 
     model_path = 'autoenc.pt'
     snap_folder = 'param_snaps'
@@ -179,7 +179,7 @@ def main(mu1=4.56, mu2=0.019, compute_ecsw=True):
         print('ECM solve time: {}'.format(time.time() - t1))
 
         print('ECM solver residual: {}'.format(
-          np.linalg.norm(C @ weights - C.sum(axis=1)) / np.linalg.norm(C.sum(axis=1))))
+          np.linalg.norm(C @ weights - b) / np.linalg.norm(b)))
 
         weights = weights.reshape((num_cells_y - 2*nn_y, num_cells_x - 2*nn_x))
         full_weights = bc_w*np.ones((num_cells_y, num_cells_x))
@@ -226,7 +226,7 @@ def main(mu1=4.56, mu2=0.019, compute_ecsw=True):
     hdm_snaps = load_or_compute_snaps(mu_rom, grid_x, grid_y, w0, dt, num_steps, snap_folder=snap_folder)
 
     # Commented section for visualization (plotting)
-    
+    '''
     inds_to_plot = range(0, 501, 100)
     snaps_to_plot = [hdm_snaps, man_snaps]
     labels = ['HDM', 'HPROM-ANN']
@@ -240,7 +240,7 @@ def main(mu1=4.56, mu2=0.019, compute_ecsw=True):
     print(f'Saving as "{save_path}"')
     plt.savefig(save_path, dpi=300)
     plt.show()
-    
+    '''
 
     # Print timings for the steps
     print(f'rnm_its: {man_its:.2f}, rnm_jac: {man_jac:.2f}, rnm_res: {man_res:.2f}, rnm_ls: {man_ls:.2f}')

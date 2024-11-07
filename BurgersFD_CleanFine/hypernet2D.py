@@ -17,8 +17,6 @@ from sklearn.utils.extmath import randomized_svd
 from scipy.spatial.distance import pdist, squareform
 import pickle
 
-COUNTER = 0
-
 
 plt.rcParams.update({
     "text.usetex": True,
@@ -279,10 +277,8 @@ def inviscid_burgers_rnm2D(grid_x, grid_y, w0, dt, num_steps, mu, rnm, ref, basi
     
         print(" ... Working on timestep {}".format(i))
         
-        t0 = time.time()
         # Perform Gauss-Newton iterations to solve for updated reduced coordinates
         y, resnorms, times = gauss_newton_rnm(res, jac, yp, decode, jacfwdfunc)
-        print(f"Time to gauss newton: {time.time() - t0:.6f} seconds")
         
         # Unpack timing metrics from the solver
         jac_timep, res_timep, ls_timep = times
@@ -317,7 +313,7 @@ def inverse_multiquadric_rbf(r, epsilon):
     """Inverse Multiquadric RBF kernel function."""
     return 1.0 / np.sqrt(1 + (epsilon * r) ** 2)
 
-def linear_rbf(r, epsilon):
+def linear_rbf(r):
     """Linear RBF kernel function."""
     return r
 
@@ -328,7 +324,7 @@ def calculate_epsilon_inverse_multiquadric(kdtree, x_new, neighbors):
     epsilon = 1 / (0.815 * d_avg)  # Formula for epsilon
     return epsilon
 
-def compute_rbf_jacobian_nearest_neighbours_dynamic_gaussian_without_scaling(kdtree, q_p_train, q_s_train, q_p_sample, epsilon, neighbors, echo_level=0):
+def compute_rbf_jacobian_nearest_neighbours_dynamic_gaussian(kdtree, q_p_train, q_s_train, q_p_sample, epsilon, neighbors, echo_level=0):
     """
     Compute the Jacobian of the RBF interpolation with respect to q_p using nearest neighbors dynamically.
 
@@ -348,7 +344,6 @@ def compute_rbf_jacobian_nearest_neighbours_dynamic_gaussian_without_scaling(kdt
 
     # Step 1: Find the nearest neighbors in q_p_train
     t0 = time.time()
-
     dist, idx = kdtree.query(q_p_sample.reshape(1, -1), k=neighbors)
     if echo_level >= 1:
         print(f"Time to find nearest neighbors: {time.time() - t0:.6f} seconds")
@@ -391,9 +386,7 @@ def compute_rbf_jacobian_nearest_neighbours_dynamic_gaussian_without_scaling(kdt
     t0 = time.time()
 
     # Compute the difference matrix D
-    #D = q_p_sample.reshape(1, -1) - q_p_neighbors  # Shape: (k, n_p)
-    # Compute the difference matrix D using normalized data
-    D = q_p_sample.reshape(1, -1) - q_p_neighbors  # Both are normalized
+    D = q_p_sample.reshape(1, -1) - q_p_neighbors  # Shape: (k, n_p)
 
     # Compute the weighted differences
     weighted_D = (rbf_values[:, np.newaxis]) * D  # Shape: (k, n_p) P*D
@@ -406,294 +399,6 @@ def compute_rbf_jacobian_nearest_neighbours_dynamic_gaussian_without_scaling(kdt
         print(f"Total time: {time.time() - start_time:.6f} seconds")
 
     return jacobian
-
-def compute_rbf_jacobian_nearest_neighbours_dynamic_gaussian_standarization(kdtree, q_p_train, q_s_train, q_p_sample, epsilon, neighbors, scaler, echo_level=0):
-    """
-    Compute the Jacobian of the RBF interpolation with respect to q_p using nearest neighbors dynamically,
-    adjusted for normalization.
-
-    Parameters:
-    - kdtree: KDTree to find nearest neighbors.
-    - q_p_train: Normalized training data for principal modes, shape (N_train, n_p).
-    - q_s_train: Training data for secondary modes, shape (N_train, n_s).
-    - q_p_sample: The input sample point (unnormalized reduced coordinates, q_p), shape (n_p,).
-    - epsilon: The width parameter for the RBF kernel.
-    - neighbors: Number of nearest neighbors to use.
-    - scaler: The StandardScaler used to normalize the data.
-    - echo_level: Level of verbosity for printing timing information (default: 0).
-
-    Returns:
-    - jacobian: The Jacobian matrix of the RBF's output with respect to q_p, shape (n_s, n_p).
-    """
-    start_time = time.time()
-
-    # Step 1: Normalize q_p_sample
-    q_p_sample_normalized = scaler.transform(q_p_sample.reshape(1, -1))
-
-    # Query the KDTree with normalized q_p_sample
-    dist, idx = kdtree.query(q_p_sample_normalized, k=neighbors)
-
-    if echo_level >= 1:
-        print(f"Time to find nearest neighbors: {time.time() - start_time:.6f} seconds")
-
-    # Step 2: Extract the neighbor points and corresponding secondary modes
-    q_p_neighbors = q_p_train[idx].reshape(neighbors, -1)  # Already normalized
-    q_s_neighbors = q_s_train[idx].reshape(neighbors, -1)
-
-    if echo_level >= 1:
-        print(f"Time to extract neighbor data: {time.time() - start_time:.6f} seconds")
-
-    # Step 3: Compute pairwise distances between neighbors
-    dists_neighbors = squareform(pdist(q_p_neighbors))  # Shape: (k, k)
-
-    if echo_level >= 1:
-        print(f"Time to compute pairwise distances: {time.time() - start_time:.6f} seconds")
-
-    # Step 4: Compute the RBF kernel matrix Psi
-    Psi = gaussian_rbf(dists_neighbors, epsilon)
-    # Regularization for numerical stability
-    Psi += np.eye(neighbors) * 1e-8
-
-    if echo_level >= 1:
-        print(f"Time to compute RBF matrix and regularize: {time.time() - start_time:.6f} seconds")
-
-    # Step 5: Solve for W_neighbors
-    W_neighbors = np.linalg.solve(Psi, q_s_neighbors)  # Shape: (k, n_s)
-
-    if echo_level >= 1:
-        print(f"Time to compute RBF weights: {time.time() - start_time:.6f} seconds")
-
-    # Step 6: Compute RBF kernel values between q_p_sample and its neighbors
-    rbf_values = gaussian_rbf(dist.flatten(), epsilon)  # Shape: (k,)
-
-    if echo_level >= 1:
-        print(f"Time to compute RBF values: {time.time() - start_time:.6f} seconds")
-
-    # Step 7: Compute the Jacobian using vectorized operations
-    # Compute the difference matrix D using normalized data
-    D = q_p_sample_normalized - q_p_neighbors  # Shape: (k, n_p)
-
-    # Compute the weighted differences
-    weighted_D = (rbf_values[:, np.newaxis]) * D  # Shape: (k, n_p)
-
-    # Compute the Jacobian w.r.t. normalized q_p
-    jacobian_normalized = -2 * epsilon**2 * W_neighbors.T @ weighted_D  # Shape: (n_s, n_p)
-
-    # Adjust the Jacobian to account for the normalization (chain rule)
-    # Extract standard deviations from the scaler
-    sigma = scaler.scale_  # Shape: (n_p,)
-    sigma_inv = 1.0 / sigma  # Shape: (n_p,)
-
-    # Multiply each column of the Jacobian by sigma_inv
-    jacobian = jacobian_normalized * sigma_inv[np.newaxis, :]  # Broadcasting over columns
-
-    if echo_level >= 1:
-        print(f"Time to compute Jacobian: {time.time() - start_time:.6f} seconds")
-        print(f"Total time: {time.time() - start_time:.6f} seconds")
-
-    return jacobian
-
-def compute_rbf_jacobian_nearest_neighbours_dynamic_gaussian(kdtree, q_p_train, q_s_train, q_p_sample, epsilon, neighbors, scaler, echo_level=0):
-    """
-    Compute the Jacobian of the RBF interpolation with respect to q_p using nearest neighbors dynamically,
-    adjusted for normalization.
-
-    Parameters:
-    - kdtree: KDTree to find nearest neighbors.
-    - q_p_train: Normalized training data for principal modes, shape (N_train, n_p).
-    - q_s_train: Training data for secondary modes, shape (N_train, n_s).
-    - q_p_sample: The input sample point (unnormalized reduced coordinates, q_p), shape (n_p,).
-    - epsilon: The width parameter for the RBF kernel.
-    - neighbors: Number of nearest neighbors to use.
-    - scaler: The StandardScaler used to normalize the data.
-    - echo_level: Level of verbosity for printing timing information (default: 0).
-
-    Returns:
-    - jacobian: The Jacobian matrix of the RBF's output with respect to q_p, shape (n_s, n_p).
-    """
-    start_time = time.time()
-
-    # Step 1: Normalize q_p_sample
-    q_p_sample_normalized = scaler.transform(q_p_sample.reshape(1, -1))
-
-    # Query the KDTree with normalized q_p_sample
-    dist, idx = kdtree.query(q_p_sample_normalized, k=neighbors)
-
-    if echo_level >= 1:
-        print(f"Time to find nearest neighbors: {time.time() - start_time:.6f} seconds")
-
-    # Step 2: Extract the neighbor points and corresponding secondary modes
-    q_p_neighbors = q_p_train[idx].reshape(neighbors, -1)  # Already normalized
-    q_s_neighbors = q_s_train[idx].reshape(neighbors, -1)
-
-    if echo_level >= 1:
-        print(f"Time to extract neighbor data: {time.time() - start_time:.6f} seconds")
-
-    # Step 3: Compute pairwise distances between neighbors
-    dists_neighbors = squareform(pdist(q_p_neighbors))  # Shape: (k, k)
-
-    if echo_level >= 1:
-        print(f"Time to compute pairwise distances: {time.time() - start_time:.6f} seconds")
-
-    # Step 4: Compute the RBF kernel matrix Psi
-    Psi = gaussian_rbf(dists_neighbors, epsilon)
-    # Regularization for numerical stability
-    Psi += np.eye(neighbors) * 1e-8
-
-    if echo_level >= 1:
-        print(f"Time to compute RBF matrix and regularize: {time.time() - start_time:.6f} seconds")
-
-    # Step 5: Solve for W_neighbors
-    W_neighbors = np.linalg.solve(Psi, q_s_neighbors)  # Shape: (k, n_s)
-
-    if echo_level >= 1:
-        print(f"Time to compute RBF weights: {time.time() - start_time:.6f} seconds")
-
-    # Step 6: Compute RBF kernel values between q_p_sample and its neighbors
-    rbf_values = gaussian_rbf(dist.flatten(), epsilon)  # Shape: (k,)
-
-    if echo_level >= 1:
-        print(f"Time to compute RBF values: {time.time() - start_time:.6f} seconds")
-
-    # Step 7: Compute the Jacobian using vectorized operations
-    # Compute the difference matrix D using normalized data
-    D = q_p_sample_normalized - q_p_neighbors  # Shape: (k, n_p)
-
-    # Compute the weighted differences
-    weighted_D = (rbf_values[:, np.newaxis]) * D  # Shape: (k, n_p)
-
-    # Compute the Jacobian w.r.t. normalized q_p
-    jacobian_normalized = -2 * epsilon**2 * W_neighbors.T @ weighted_D  # Shape: (n_s, n_p)
-
-    # Adjust the Jacobian to account for the normalization (chain rule)
-    scale = scaler.scale_
-
-    # Multiply each column of the Jacobian by scale_inv
-    jacobian = jacobian_normalized * scale[np.newaxis, :]  # Broadcasting over columns
-
-    if echo_level >= 1:
-        print(f"Time to compute Jacobian: {time.time() - start_time:.6f} seconds")
-        print(f"Total time: {time.time() - start_time:.6f} seconds")
-
-    return jacobian
-
-def compute_rbf_jacobian_nearest_neighbours_dynamic_gaussian_(kdtree, q_p_train, q_s_train, q_p_sample, epsilon, neighbors, scaler, echo_level=0):
-    """
-    Compute the Jacobian of the RBF interpolation with respect to q_p using nearest neighbors dynamically,
-    adjusted for Min-Max normalization, using a loop-based approach.
-
-    Parameters:
-    - kdtree: KDTree to find nearest neighbors.
-    - q_p_train: Normalized training data for principal modes, shape (N_train, n_p).
-    - q_s_train: Training data for secondary modes, shape (N_train, n_s).
-    - q_p_sample: The input sample point (unnormalized reduced coordinates, q_p), shape (n_p,).
-    - epsilon: The width parameter for the RBF kernel.
-    - neighbors: Number of nearest neighbors to use.
-    - scaler: The MinMaxScaler used to normalize the data.
-    - echo_level: Level of verbosity for printing timing information (default: 0).
-
-    Returns:
-    - jacobian: The Jacobian matrix of the RBF's output with respect to q_p, shape (n_s, n_p).
-    """
-    start_time = time.time()
-
-    t0 = time.time()
-
-    # Step 1: Normalize q_p_sample
-    q_p_sample_normalized = scaler.transform(q_p_sample.reshape(1, -1)).reshape(-1)  # Shape: (n_p,)
-
-    if echo_level >= 1:
-        print(f"Time to normalize: {time.time() - start_time:.6f} seconds")
-
-    t0 = time.time()
-
-    # Query the KDTree with normalized q_p_sample
-    dist, idx = kdtree.query(q_p_sample_normalized.reshape(1, -1), k=neighbors)
-
-    if echo_level >= 1:
-        print(f"Time to find nearest neighbors: {time.time() - t0:.6f} seconds")
-
-    t0 = time.time()
-
-    # Step 2: Extract the neighbor points and corresponding secondary modes
-    q_p_neighbors = q_p_train[idx].reshape(neighbors, -1)  # Normalized, shape: (neighbors, n_p)
-    q_s_neighbors = q_s_train[idx].reshape(neighbors, -1)  # Shape: (neighbors, n_s)
-
-    if echo_level >= 1:
-        print(f"Time to extract neighbor data: {time.time() - t0:.6f} seconds")
-
-    t0 = time.time()
-
-    # Step 3: Compute pairwise distances between neighbors
-    dists_neighbors = np.linalg.norm(q_p_neighbors[:, None, :] - q_p_neighbors[None, :, :], axis=-1)  # Shape: (neighbors, neighbors)
-
-    if echo_level >= 1:
-        print(f"Time to compute pairwise distances: {time.time() - t0:.6f} seconds")
-
-    t0 = time.time()
-
-    # Step 4: Compute the RBF kernel matrix Psi
-    Psi = gaussian_rbf(dists_neighbors, epsilon)
-    # Regularization for numerical stability
-    Psi += np.eye(neighbors) * 1e-8
-    #cond_number = np.linalg.cond(Psi)
-    #print(f"Condition number of Phi: {cond_number}")
-
-    if echo_level >= 1:
-        print(f"Time to compute RBF matrix and regularize: {time.time() - t0:.6f} seconds")
-
-    t0 = time.time()
-
-    # Step 5: Solve for W_neighbors
-    W_neighbors = np.linalg.solve(Psi, q_s_neighbors)  # Shape: (neighbors, n_s)
-
-    if echo_level >= 1:
-        print(f"Time to compute RBF weights: {time.time() - t0:.6f} seconds")
-
-    t0 = time.time()
-
-    # Step 6: Compute RBF kernel values between q_p_sample and its neighbors
-    dist_to_sample = np.linalg.norm(q_p_neighbors - q_p_sample_normalized, axis=1)  # Shape: (neighbors,)
-    rbf_values = gaussian_rbf(dist_to_sample, epsilon)  # Shape: (neighbors,)
-
-    if echo_level >= 1:
-        print(f"Time to compute RBF values: {time.time() - t0:.6f} seconds")
-
-    t0 = time.time()
-
-    # Step 7: Compute the Jacobian using a loop
-    input_dim = q_p_sample_normalized.shape[0]  # n_p
-    output_dim = q_s_neighbors.shape[1]         # n_s
-    jacobian_norm = np.zeros((output_dim, input_dim))  # Shape: (n_s, n_p)
-
-    for i in range(neighbors):
-        q_p_i = q_p_neighbors[i]  # Shape: (n_p,)
-        r_i = dist_to_sample[i]
-        phi_r_i = rbf_values[i]
-
-        if r_i > 1e-12:
-            # Compute the derivative of the Gaussian RBF with respect to q_p_sample_normalized
-            dphi_dq_p_norm = -2 * epsilon**2 * (q_p_sample_normalized - q_p_i) * phi_r_i  # Shape: (n_p,)
-        else:
-            dphi_dq_p_norm = np.zeros_like(q_p_sample_normalized)  # Avoid division by zero
-
-        # Update the Jacobian
-        jacobian_norm += np.outer(W_neighbors[i], dphi_dq_p_norm)  # Shape: (n_s, n_p)
-
-    if echo_level >= 1:
-        print(f"Time to compute Jacobian: {time.time() - t0:.6f} seconds")
-        print(f"Total time: {time.time() - start_time:.6f} seconds")
-
-    # Step 8: Adjust the Jacobian to account for the normalization (chain rule)
-    # Extract scaling factors from the scaler
-    # For Min-Max normalization
-    scale = scaler.scale_  
-
-    # Adjust the Jacobian
-    jacobian = jacobian_norm * scale[np.newaxis, :]  # Broadcasting over columns
-
-    return jacobian
-
 
 def compute_rbf_jacobian_nearest_neighbours_dynamic_imq_(kdtree, q_p_train, q_s_train, q_p_sample, epsilon, neighbors, echo_level=0):
     """
@@ -855,40 +560,37 @@ def compute_rbf_jacobian_nearest_neighbours_dynamic_imq(kdtree, q_p_train, q_s_t
 
     return jacobian
 
-def compute_rbf_jacobian_nearest_neighbours_dynamic_linear(kdtree, q_p_train_norm, q_s_train, q_p_sample, epsilon, neighbors, scaler, echo_level=0):
+def compute_rbf_jacobian_nearest_neighbours_dynamic_linear(kdtree, q_p_train, q_s_train, q_p_sample, neighbors, echo_level=0):
     """
-    Compute the Jacobian of the linear RBF interpolation with respect to q_p using nearest neighbors dynamically, 
-    accounting for Min-Max normalization.
-    
+    Compute the Jacobian of the RBF interpolation with respect to q_p using nearest neighbors dynamically (linear RBF).
+
     Parameters:
     - kdtree: KDTree to find nearest neighbors.
-    - q_p_train_norm: Normalized training data for principal modes (primary reduced coordinates), shape (N_train, n_p).
+    - q_p_train: Training data for principal modes (primary reduced coordinates), shape (N_train, n_p).
     - q_s_train: Training data for secondary modes (secondary reduced coordinates), shape (N_train, n_s).
-    - q_p_sample: The input sample point (unnormalized reduced coordinates, q_p), shape (n_p,).
-    - epsilon: Width parameter for the linear RBF kernel (not used in linear but kept for consistency).
-    - neighbors: Number of nearest neighbors to use (k).
-    - scaler: The Min-Max scaler used to normalize the data.
+    - q_p_sample: The input sample point (reduced coordinates, q_p), shape (n_p,).
+    - neighbors: Number of nearest neighbors to use (k in the slides).
     - echo_level: Level of verbosity for printing timing information (default: 0).
-    
+
     Returns:
     - jacobian: The Jacobian matrix of the RBF's output with respect to q_p, shape (n_s, n_p).
     """
+    import time
+    import numpy as np
+    from scipy.spatial.distance import pdist, squareform
 
     start_time = time.time()
-    
-    # Normalize q_p_sample
-    q_p_sample_norm = scaler.transform(q_p_sample.reshape(1, -1)).reshape(-1)
-    
-    # Step 1: Find the nearest neighbors in the normalized space
+
+    # Step 1: Find the nearest neighbors in q_p_train
     t0 = time.time()
-    dist, idx = kdtree.query(q_p_sample_norm.reshape(1, -1), k=neighbors)
+    dist, idx = kdtree.query(q_p_sample.reshape(1, -1), k=neighbors)
     if echo_level >= 1:
         print(f"Time to find nearest neighbors: {time.time() - t0:.6f} seconds")
 
     # Step 2: Extract the neighbor points and corresponding secondary modes
     t0 = time.time()
-    q_p_neighbors = q_p_train_norm[idx].reshape(neighbors, -1)  # Normalized neighbors
-    q_s_neighbors = q_s_train[idx].reshape(neighbors, -1)       # Secondary modes for neighbors
+    q_p_neighbors = q_p_train[idx].reshape(neighbors, -1)  # Shape: (k, n_p)
+    q_s_neighbors = q_s_train[idx].reshape(neighbors, -1)  # Shape: (k, n_s)
     if echo_level >= 1:
         print(f"Time to extract neighbor data: {time.time() - t0:.6f} seconds")
 
@@ -898,45 +600,46 @@ def compute_rbf_jacobian_nearest_neighbours_dynamic_linear(kdtree, q_p_train_nor
     if echo_level >= 1:
         print(f"Time to compute pairwise distances: {time.time() - t0:.6f} seconds")
 
-    # Step 4: Compute the RBF kernel matrix Psi (linear kernel)
+    # Step 4: Compute the RBF kernel matrix Psi
     t0 = time.time()
-    Psi = dists_neighbors  # Linear RBF: psi(r) = r
-    Psi += np.eye(neighbors) * 1e-8  # Regularization for numerical stability
+    Psi = linear_rbf(dists_neighbors)  # Shape: (k, k)
+    # Regularization for numerical stability
+    Psi += np.eye(neighbors) * 1e-8
     if echo_level >= 1:
         print(f"Time to compute RBF matrix and regularize: {time.time() - t0:.6f} seconds")
 
     # Step 5: Compute the weights W_neighbors
     t0 = time.time()
+    # Solve for W_neighbors: Psi * W_neighbors = q_s_neighbors
     W_neighbors = np.linalg.solve(Psi, q_s_neighbors)  # Shape: (k, n_s)
     if echo_level >= 1:
         print(f"Time to compute RBF weights: {time.time() - t0:.6f} seconds")
 
-    # Step 6: Compute RBF values between q_p_sample_norm and its neighbors (psi vector)
+    # Step 6: Compute RBF kernel values between q_p_sample and its neighbors (psi vector)
     t0 = time.time()
-    rbf_values = dist.flatten()  # For linear RBF, psi_i = r_i
+    # For linear RBF, psi_i = r_i
+    rbf_values = dist.flatten()  # Shape: (k,)
     if echo_level >= 1:
         print(f"Time to compute RBF values: {time.time() - t0:.6f} seconds")
 
     # Step 7: Compute the Jacobian using vectorized operations
     t0 = time.time()
 
-    # Compute the difference matrix D and the norm r for gradient calculation
-    D = q_p_sample_norm - q_p_neighbors  # Shape: (k, n_p)
-    r = dist.flatten()                   # Shape: (k,)
+    # Compute the difference matrix D
+    D = q_p_sample.reshape(1, -1) - q_p_neighbors  # Shape: (k, n_p)
 
-    # Calculate r_inv, handling division by zero
+    # Compute the norms r
+    r = dist.flatten()  # Shape: (k,)
+
+    # Compute r_inv, handling division by zero
     with np.errstate(divide='ignore', invalid='ignore'):
         r_inv = np.where(r != 0, 1.0 / r, 0.0)  # Shape: (k,)
 
-    # Gradient of psi in the normalized space
-    grad_psi_norm = D * r_inv[:, np.newaxis]  # Shape: (k, n_p)
+    # Compute the gradient of psi
+    grad_psi = D * r_inv[:, np.newaxis]  # Shape: (k, n_p)
 
-    # Compute the Jacobian with respect to the normalized coordinates
-    jacobian_norm = W_neighbors.T @ grad_psi_norm  # Shape: (n_s, n_p)
-
-    # Adjust the Jacobian to account for Min-Max normalization
-    scale = scaler.scale_  # Min-Max scaling factor: 1 / (q_p_max - q_p_min)
-    jacobian = jacobian_norm * scale[np.newaxis, :]  # Broadcasting over columns
+    # Compute the Jacobian
+    jacobian = W_neighbors.T @ grad_psi  # Shape: (n_s, n_p)
 
     if echo_level >= 1:
         print(f"Time to compute Jacobian: {time.time() - t0:.6f} seconds")
@@ -944,97 +647,7 @@ def compute_rbf_jacobian_nearest_neighbours_dynamic_linear(kdtree, q_p_train_nor
 
     return jacobian
 
-def compute_rbf_jacobian_nearest_neighbours_dynamic_linear_(kdtree, q_p_train_norm, q_s_train, q_p_sample, epsilon, neighbors, scaler, echo_level=0):
-    """
-    Compute the Jacobian of the linear RBF interpolation with respect to q_p using nearest neighbors dynamically, 
-    accounting for Min-Max normalization.
-    
-    Parameters:
-    - kdtree: KDTree to find nearest neighbors.
-    - q_p_train_norm: Normalized training data for principal modes (primary reduced coordinates), shape (N_train, n_p).
-    - q_s_train: Training data for secondary modes (secondary reduced coordinates), shape (N_train, n_s).
-    - q_p_sample: The input sample point (unnormalized reduced coordinates, q_p), shape (n_p,).
-    - epsilon: Width parameter for the linear RBF kernel (not used in linear but kept for consistency).
-    - neighbors: Number of nearest neighbors to use (k).
-    - scaler: The Min-Max scaler used to normalize the data.
-    - echo_level: Level of verbosity for printing timing information (default: 0).
-    
-    Returns:
-    - jacobian: The Jacobian matrix of the RBF's output with respect to q_p, shape (n_s, n_p).
-    """
-
-    start_time = time.time()
-    
-    # Normalize q_p_sample
-    q_p_sample_norm = scaler.transform(q_p_sample.reshape(1, -1)).reshape(-1)
-    
-    # Step 1: Find the nearest neighbors in the normalized space
-    t0 = time.time()
-    dist, idx = kdtree.query(q_p_sample_norm.reshape(1, -1), k=neighbors)
-    if echo_level >= 1:
-        print(f"Time to find nearest neighbors: {time.time() - t0:.6f} seconds")
-
-    # Step 2: Extract the neighbor points and corresponding secondary modes
-    t0 = time.time()
-    q_p_neighbors = q_p_train_norm[idx].reshape(neighbors, -1)  # Normalized neighbors
-    q_s_neighbors = q_s_train[idx].reshape(neighbors, -1)       # Secondary modes for neighbors
-    if echo_level >= 1:
-        print(f"Time to extract neighbor data: {time.time() - t0:.6f} seconds")
-
-    # Step 3: Compute pairwise distances between neighbors to form the RBF kernel matrix Psi
-    t0 = time.time()
-    dists_neighbors = np.linalg.norm(q_p_neighbors[:, None, :] - q_p_neighbors[None, :, :], axis=-1)
-    if echo_level >= 1:
-        print(f"Time to compute pairwise distances: {time.time() - t0:.6f} seconds")
-
-    # Step 4: Compute the RBF kernel matrix Psi (linear kernel)
-    t0 = time.time()
-    Psi = linear_rbf(dists_neighbors, epsilon)  # Linear RBF: psi(r) = r
-    Psi += np.eye(neighbors) * 1e-8  # Regularization for numerical stability
-    if echo_level >= 1:
-        print(f"Time to compute RBF matrix and regularize: {time.time() - t0:.6f} seconds")
-
-    # Step 5: Compute the weights W_neighbors
-    t0 = time.time()
-    W_neighbors = np.linalg.solve(Psi, q_s_neighbors)  # Shape: (k, n_s)
-    if echo_level >= 1:
-        print(f"Time to compute RBF weights: {time.time() - t0:.6f} seconds")
-
-    # Step 6: Compute RBF values between q_p_sample_norm and its neighbors (psi vector)
-    t0 = time.time()
-    dist_to_sample = np.linalg.norm(q_p_neighbors - q_p_sample_norm, axis=1)
-    if echo_level >= 1:
-        print(f"Time to compute RBF values: {time.time() - t0:.6f} seconds")
-
-    # Step 7: Compute the Jacobian using vectorized operations
-    t0 = time.time()
-
-    # Compute the Jacobian with respect to normalized q_p
-    input_dim = q_p_sample_norm.shape[0]
-    output_dim = q_s_neighbors.shape[1]
-    jacobian_norm = np.zeros((output_dim, input_dim))
-    
-    for i in range(neighbors):
-        q_p_i = q_p_neighbors[i]
-        r_i = dist_to_sample[i]
-        
-        # Compute the partial derivative for the linear RBF
-        if r_i > 1e-12:
-            dphi_dq_p_norm = (q_p_sample_norm - q_p_i) / r_i
-        else:
-            dphi_dq_p_norm = np.zeros_like(q_p_sample_norm)
-        
-        # Update the Jacobian with contributions from this neighbor
-        jacobian_norm += np.outer(W_neighbors[i], dphi_dq_p_norm)
-    
-    jacobian_time = time.time()
-    
-    # Adjust the Jacobian to account for Min-Max normalization
-    scale = scaler.scale_  # Scale factors for Min-Max normalization
-    jacobian = jacobian_norm * scale[np.newaxis, :]  # Adjusting for normalization
-    return jacobian
-
-def interpolate_with_rbf_nearest_neighbours_dynamic_gaussian(kdtree, q_p_train, q_s_train, q_p_sample_T, epsilon, neighbors, scaler, echo_level=0):
+def interpolate_with_rbf_nearest_neighbours_dynamic_gaussian(kdtree, q_p_train, q_s_train, q_p_sample_T, epsilon, neighbors, echo_level=0):
     """
     Interpolate the secondary modes q_s using nearest neighbors and RBF interpolation dynamically.
 
@@ -1054,17 +667,7 @@ def interpolate_with_rbf_nearest_neighbours_dynamic_gaussian(kdtree, q_p_train, 
 
     # Step 1: Find the nearest neighbors in q_p_train
     t0 = time.time()
-    # Normalize q_p_sample
-    q_p_sample_normalized = scaler.transform(q_p_sample_T.reshape(1, -1))
-
-    if echo_level >= 1:
-        print(f"Time to normalize: {time.time() - t0:.6f} seconds")
-    
-    t0 = time.time()
-    # Query the KDTree with normalized q_p_sample
-    dist, idx = kdtree.query(q_p_sample_normalized, k=neighbors)
-
-    #dist, idx = kdtree.query(q_p_sample_T.reshape(1, -1), k=neighbors) #Without normalizing
+    dist, idx = kdtree.query(q_p_sample_T.reshape(1, -1), k=neighbors)
     if echo_level >= 1:
         print(f"Time to find nearest neighbors: {time.time() - t0:.6f} seconds")
 
@@ -1176,69 +779,68 @@ def interpolate_with_rbf_nearest_neighbours_dynamic_imq(kdtree, q_p_train, q_s_t
 
     return q_s_pred
 
-def interpolate_with_rbf_nearest_neighbours_dynamic_linear(kdtree, q_p_train_norm, q_s_train, q_p_sample, epsilon, neighbors, scaler, echo_level=0):
+def interpolate_with_rbf_nearest_neighbours_dynamic_linear(kdtree, q_p_train, q_s_train, q_p_sample_T, neighbors, echo_level=0):
     """
-    Interpolate the secondary modes q_s using nearest neighbors and linear RBF interpolation dynamically,
-    accounting for Min-Max normalization.
+    Interpolate the secondary modes q_s using nearest neighbors and RBF interpolation dynamically (linear RBF).
 
     Parameters:
     - kdtree: KDTree to find nearest neighbors.
-    - q_p_train_norm: Normalized training data for principal modes.
+    - q_p_train: Training data for principal modes.
     - q_s_train: Training data for secondary modes.
-    - q_p_sample: The input sample point (unnormalized reduced coordinates, q_p).
-    - epsilon: Width parameter for the linear RBF kernel (not used in linear but kept for consistency).
+    - q_p_sample_T: The input sample point (reduced coordinates, q_p).
     - neighbors: Number of nearest neighbors to use.
-    - scaler: The Min-Max scaler used to normalize the data.
     - echo_level: Level of verbosity for printing timing information (default: 0).
 
     Returns:
-    - q_s_pred: The predicted secondary modes for the given q_p_sample.
+    - q_s_pred: The predicted secondary modes for the given q_p_sample_T.
     """
+    import time
+    import numpy as np
+    from scipy.spatial.distance import pdist, squareform
 
     start_time = time.time()
 
-    # Step 1: Normalize q_p_sample
-    q_p_sample_norm = scaler.transform(q_p_sample.reshape(1, -1)).reshape(-1)
-    
-    # Step 2: Find the nearest neighbors in the normalized space
+    # Step 1: Find the nearest neighbors in q_p_train
     t0 = time.time()
-    dist, idx = kdtree.query(q_p_sample_norm.reshape(1, -1), k=neighbors)
+    dist, idx = kdtree.query(q_p_sample_T.reshape(1, -1), k=neighbors)
     if echo_level >= 1:
         print(f"Time to find nearest neighbors: {time.time() - t0:.6f} seconds")
 
-    # Step 3: Extract the neighbor points and corresponding secondary modes
+    # Step 2: Extract the neighbor points and corresponding secondary modes
     t0 = time.time()
-    q_p_neighbors = q_p_train_norm[idx].reshape(neighbors, -1)
+    q_p_neighbors = q_p_train[idx].reshape(neighbors, -1)
     q_s_neighbors = q_s_train[idx].reshape(neighbors, -1)
     if echo_level >= 1:
         print(f"Time to extract neighbor data: {time.time() - t0:.6f} seconds")
 
-    # Step 4: Compute pairwise distances between the neighbors in the normalized space
+    # Step 3: Compute pairwise distances between the neighbors
     t0 = time.time()
     dists_neighbors = squareform(pdist(q_p_neighbors))
     if echo_level >= 1:
         print(f"Time to compute pairwise distances: {time.time() - t0:.6f} seconds")
 
-    # Step 5: Compute the RBF matrix for the neighbors (linear kernel)
+    # Step 4: Compute the RBF matrix for the neighbors
     t0 = time.time()
-    Phi_neighbors = dists_neighbors  # Linear RBF: psi(r) = r
-    Phi_neighbors += np.eye(neighbors) * 1e-8  # Regularization for numerical stability
+    Phi_neighbors = linear_rbf(dists_neighbors)
+    # Regularization for numerical stability
+    Phi_neighbors += np.eye(neighbors) * 1e-8
     if echo_level >= 1:
         print(f"Time to compute RBF matrix and regularize: {time.time() - t0:.6f} seconds")
 
-    # Step 6: Solve for the RBF weights (W_neighbors)
+    # Step 5: Solve for the RBF weights (W_neighbors)
     t0 = time.time()
     W_neighbors = np.linalg.solve(Phi_neighbors, q_s_neighbors)
     if echo_level >= 1:
         print(f"Time to compute RBF weights: {time.time() - t0:.6f} seconds")
 
-    # Step 7: Compute RBF values between q_p_sample_norm and its neighbors
+    # Step 6: Compute RBF kernel values between q_p_sample_T and its neighbors
     t0 = time.time()
-    rbf_values = dist.flatten()  # For linear RBF, psi_i = r_i
+    # For linear RBF, psi_i = r_i
+    rbf_values = dist.flatten()
     if echo_level >= 1:
         print(f"Time to compute RBF values: {time.time() - t0:.6f} seconds")
 
-    # Step 8: Interpolate q_s using the precomputed weights and RBF kernel values
+    # Step 7: Interpolate q_s using the precomputed weights and RBF kernel values
     t0 = time.time()
     q_s_pred = rbf_values @ W_neighbors
     if echo_level >= 1:
@@ -1247,8 +849,139 @@ def interpolate_with_rbf_nearest_neighbours_dynamic_linear(kdtree, q_p_train_nor
 
     return q_s_pred
 
+def inviscid_burgers_pod_rbf_2D_working(grid_x, grid_y, w0, dt, num_steps, mu, basis, basis2, kdtree, q_p_train, q_s_train, epsilon, neighbors):
+    """
+    Solves the 2D inviscid Burgers' equations using a Reduced-Order Model (ROM)
+    augmented with Proper Orthogonal Decomposition (POD) and Radial Basis Functions (RBF).
+    
+    Parameters:
+    - grid_x, grid_y: Arrays defining the grid points in the x and y directions.
+    - w0: Initial state vector (flattened for both u and v components).
+    - dt: Time step size.
+    - num_steps: Number of time steps to simulate.
+    - mu: Parameter vector [mu1, mu2].
+    - ref: Reference solution vector.
+    - basis: Primary POD modes matrix (\(\mathbf{V}\)).
+    - basis2: Secondary POD modes matrix (\(\mathbf{\bar{V}}\)).
+    - kdtree: KDTree used for nearest-neighbor search.
+    - q_p_train, q_s_train: Training data for RBF interpolation.
+    - r: Number of primary modes used.
+    - epsilon: Shape parameter for RBF.
+    - neighbors: Number of neighbors for RBF interpolation.
+    
+    Returns:
+    - snaps: Array of solution snapshots at each time step.
+    - (num_its, jac_time, res_time, ls_time): Performance metrics.
+    """
+    
+    # -----------------------------------
+    # 1. Operators Setup
+    # -----------------------------------
+    Dxec = make_ddx(grid_x)  # Derivative operator in x-direction
+    Dyec = make_ddx(grid_y)  # Derivative operator in y-direction
+    
+    JDxec = sp.kron(sp.eye(grid_y.size - 1, grid_y.size - 1), Dxec)  # For u-component
+    JDyec = sp.kron(sp.eye(grid_x.size - 1, grid_x.size - 1), Dyec)  # For v-component
+    JDyec = JDyec.tocsr()
+    
+    shp = (grid_y.size - 1, grid_y.size - 1)
+    size = shp[0] * shp[1]
+    idx = np.arange(size).reshape(shp).T.flatten()
+    JDyec = JDyec[idx, :]
+    JDyec = JDyec[:, idx]
+    
+    Eye = sp.eye(2 * (grid_x.size - 1) * (grid_y.size - 1))
+    Jop = sp.bmat([[JDxec, None], [None, JDyec]])
+
+    num_its = 0
+    jac_time = 0
+    res_time = 0
+    ls_time = 0
+
+    # Flatten and reshape the initial state vector for u and v components
+    w0 = w0.ravel()
+
+    # Project the initial full state onto the primary POD basis to obtain reduced coordinates
+    y0 = basis.T @ w0
+
+    # -----------------------------------
+    # 2. Define the POD-RBF Reconstruction Function
+    # -----------------------------------
+    def decode(x):
+        """
+        Reconstruct the full state vector from reduced coordinates using POD and RBF interpolation.
+        
+        Parameters:
+        - x: Reduced coordinates (\(\mathbf{q}\)).
+        
+        Returns:
+        - Reconstructed full state vector (\(\tilde{\mathbf{u}}\)).
+        """
+        q_s_pred = interpolate_with_rbf_nearest_neighbours_dynamic_gaussian(kdtree, q_p_train, q_s_train, x, epsilon, neighbors)
+        return basis @ x + basis2 @ q_s_pred
+
+    # Function to compute full Jacobian including U_p + U_s @ rbf_jacobian
+    def jacfwdfunc(x, U_p, U_s):
+        """
+        Compute the full Jacobian V = U_p + U_s * J_RBF.
+        
+        Parameters:
+        - x: Reduced coordinates (q_p).
+        
+        Returns:
+        - Full Jacobian V with respect to reduced coordinates.
+        """
+        # Compute the RBF Jacobian J_RBF
+        rbf_jacobian = compute_rbf_jacobian_nearest_neighbours_dynamic_gaussian(kdtree, q_p_train, q_s_train, x, epsilon, neighbors)
+        
+        # Return the full Jacobian V = U_p + U_s * J_RBF
+        return U_p + U_s @ rbf_jacobian
+
+    # -----------------------------------
+    # 3. Time-Stepping Loop for ROM Simulation
+    # -----------------------------------
+    snaps = np.zeros((w0.size, num_steps + 1))  # Full state snapshots
+    red_coords = np.zeros((y0.shape[0], num_steps + 1))  # Reduced coordinates
+
+    snaps[:, 0] = w0
+    red_coords[:, 0] = y0
+
+    wp = w0.copy()  # Previous state (w_p)
+    yp = y0.copy()  # Previous reduced coordinates (y_p)
+
+    for i in range(num_steps):
+        def res(w):
+            return inviscid_burgers_res2D(w, grid_x, grid_y, dt, wp, mu, Dxec, Dyec)
+
+        def jac(w):
+            return inviscid_burgers_exact_jac2D(w, dt, JDxec, JDyec, Eye)
+
+        print(" ... Working on timestep {}".format(i))
+        
+        # Perform Gauss-Newton iterations to solve for updated reduced coordinates
+        y, resnorms, times = gauss_newton_pod_rbf(res, jac, yp, basis, basis2)
+
+        jac_timep, res_timep, ls_timep = times
+        num_its += len(resnorms)
+        jac_time += jac_timep
+        res_time += res_timep
+        ls_time += ls_timep
+
+        # Reconstruct the full state using the updated reduced coordinates
+        w = decode_rbf(y)
+
+        # Store the updated reduced coordinates and full state snapshot
+        red_coords[:, i + 1] = y
+        snaps[:, i + 1] = w
+
+        # Update previous state vectors for the next iteration
+        wp = w
+        yp = y
+
+    return snaps, (num_its, jac_time, res_time, ls_time)
+
 # Define a function for decode (POD-RBF reconstruction)
-def decode_rbf(x, epsilon, neighbors, kdtree, q_p_train, q_s_train, basis, basis2, scaler, kernel_type='gaussian'):
+def decode_rbf(x, epsilon, neighbors, kdtree, q_p_train, q_s_train, basis, basis2, kernel_type='gaussian'):
     """
     Reconstruct the full state vector from reduced coordinates using POD and RBF interpolation.
     
@@ -1270,7 +1003,7 @@ def decode_rbf(x, epsilon, neighbors, kdtree, q_p_train, q_s_train, basis, basis
     if kernel_type == 'gaussian':
         # Use Gaussian RBF interpolation
         q_s_pred = interpolate_with_rbf_nearest_neighbours_dynamic_gaussian(
-            kdtree, q_p_train, q_s_train, x, epsilon, neighbors, scaler, echo_level=0)
+            kdtree, q_p_train, q_s_train, x, epsilon, neighbors)
         
     elif kernel_type == 'imq':  # Inverse Multiquadric kernel
         # Call calculate_epsilon_inverse_multiquadric to adjust epsilon for the IMQ kernel
@@ -1283,15 +1016,15 @@ def decode_rbf(x, epsilon, neighbors, kdtree, q_p_train, q_s_train, basis, basis
     elif kernel_type == 'linear':  # Linear kernel
         # Use Linear RBF interpolation 
         q_s_pred = interpolate_with_rbf_nearest_neighbours_dynamic_linear(
-            kdtree, q_p_train, q_s_train, x, epsilon, neighbors, scaler)
+            kdtree, q_p_train, q_s_train, x, epsilon, neighbors)
     else:
         raise ValueError(f"Unsupported kernel type: {kernel_type}")
 
     # Reconstruct the full state vector
-    return basis @ x + basis2 @ q_s_pred
+    return basis @ x + basis2 @ q_s_pred, epsilon
 
 # Define a function for jacfwdfunc (POD-RBF Jacobian)
-def jac_rbf(x, kdtree, q_p_train, q_s_train, basis, basis2, epsilon, neighbors, scaler, kernel_type='gaussian'):
+def jac_rbf(x, kdtree, q_p_train, q_s_train, basis, basis2, epsilon, neighbors, kernel_type='gaussian'):
     """
     Compute the full Jacobian V = U_p + U_s * J_RBF.
     
@@ -1314,7 +1047,7 @@ def jac_rbf(x, kdtree, q_p_train, q_s_train, basis, basis2, epsilon, neighbors, 
     if kernel_type == 'gaussian':
         # Call the Gaussian RBF Jacobian function
         rbf_jacobian = compute_rbf_jacobian_nearest_neighbours_dynamic_gaussian(
-            kdtree, q_p_train, q_s_train, x, epsilon, neighbors, scaler, echo_level=0)
+            kdtree, q_p_train, q_s_train, x, epsilon, neighbors)
         
     elif kernel_type == 'imq':  # Inverse Multiquadric kernel
         # Call calculate_epsilon_inverse_multiquadric to adjust epsilon for the IMQ kernel
@@ -1328,7 +1061,7 @@ def jac_rbf(x, kdtree, q_p_train, q_s_train, basis, basis2, epsilon, neighbors, 
     elif kernel_type == 'linear':  # Linear kernel
         # Call the Linear RBF Jacobian function 
         rbf_jacobian = compute_rbf_jacobian_nearest_neighbours_dynamic_linear(
-            kdtree, q_p_train, q_s_train, x, epsilon, neighbors, scaler)
+            kdtree, q_p_train, q_s_train, x, epsilon, neighbors)
     
     else:
         raise ValueError(f"Unsupported kernel type: {kernel_type}")
@@ -1336,7 +1069,118 @@ def jac_rbf(x, kdtree, q_p_train, q_s_train, basis, basis2, epsilon, neighbors, 
     # Return the full Jacobian V = U_p + U_s * J_RBF
     return basis + basis2 @ rbf_jacobian
 
-def inviscid_burgers_pod_rbf_2D(grid_x, grid_y, w0, dt, num_steps, mu, basis, basis2, kdtree, q_p_train, q_s_train, epsilon, neighbors, scaler, kernel_type="gaussian"):
+
+def inviscid_burgers_pod_rbf_2D_reading_optimal_hyperparameters(grid_x, grid_y, w0, dt, num_steps, mu, basis, basis2, kdtree, q_p_train, q_s_train, epsilon, neighbors):
+    """
+    Solves the 2D inviscid Burgers' equations using a Reduced-Order Model (ROM)
+    augmented with Proper Orthogonal Decomposition (POD) and Radial Basis Functions (RBF).
+    
+    Parameters:
+    - grid_x, grid_y: Arrays defining the grid points in the x and y directions.
+    - w0: Initial state vector (flattened for both u and v components).
+    - dt: Time step size.
+    - num_steps: Number of time steps to simulate.
+    - mu: Parameter vector [mu1, mu2].
+    - ref: Reference solution vector.
+    - basis: Primary POD modes matrix (\(\mathbf{V}\)).
+    - basis2: Secondary POD modes matrix (\(\mathbf{\bar{V}}\)).
+    - kdtree: KDTree used for nearest-neighbor search.
+    - q_p_train, q_s_train: Training data for RBF interpolation.
+    - r: Number of primary modes used.
+    - epsilon: Shape parameter for RBF.
+    - neighbors: Number of neighbors for RBF interpolation.
+    
+    Returns:
+    - snaps: Array of solution snapshots at each time step.
+    - (num_its, jac_time, res_time, ls_time): Performance metrics.
+    """
+    
+    # -----------------------------------
+    # 1. Operators Setup
+    # -----------------------------------
+    Dxec = make_ddx(grid_x)  # Derivative operator in x-direction
+    Dyec = make_ddx(grid_y)  # Derivative operator in y-direction
+    
+    JDxec = sp.kron(sp.eye(grid_y.size - 1, grid_y.size - 1), Dxec)  # For u-component
+    JDyec = sp.kron(sp.eye(grid_x.size - 1, grid_x.size - 1), Dyec)  # For v-component
+    JDyec = JDyec.tocsr()
+    
+    shp = (grid_y.size - 1, grid_y.size - 1)
+    size = shp[0] * shp[1]
+    idx = np.arange(size).reshape(shp).T.flatten()
+    JDyec = JDyec[idx, :]
+    JDyec = JDyec[:, idx]
+    
+    Eye = sp.eye(2 * (grid_x.size - 1) * (grid_y.size - 1))
+    Jop = sp.bmat([[JDxec, None], [None, JDyec]])
+
+    num_its = 0
+    jac_time = 0
+    res_time = 0
+    ls_time = 0
+
+    # Flatten and reshape the initial state vector for u and v components
+    w0 = w0.ravel()
+
+    # Load the best parameters (neighbors and epsilon) for each snapshot
+    with open('POD-RBF/Best_POD-RBF_Gaussian_Per_Snapshot/best_parameters_per_snapshot.pkl', 'rb') as f:
+        best_parameters_per_snapshot = pickle.load(f)
+
+    # Project the initial full state onto the primary POD basis to obtain reduced coordinates
+    y0 = basis.T @ w0
+
+    # -----------------------------------
+    # 2. Time-Stepping Loop for ROM Simulation
+    # -----------------------------------
+    snaps = np.zeros((w0.size, num_steps + 1))  # Full state snapshots
+    red_coords = np.zeros((y0.shape[0], num_steps + 1))  # Reduced coordinates
+
+    snaps[:, 0] = w0
+    red_coords[:, 0] = y0
+
+    wp = w0.copy()  # Previous state (w_p)
+    yp = y0.copy()  # Previous reduced coordinates (y_p)
+
+    for i in range(num_steps):
+        # Extract the best epsilon and neighbors for the current time step
+        best_params = best_parameters_per_snapshot[i]
+        epsilon = best_params['epsilon']
+        neighbors = best_params['neighbors']
+
+        def res(w):
+            return inviscid_burgers_res2D(w, grid_x, grid_y, dt, wp, mu, Dxec, Dyec)
+
+        def jac(w):
+            return inviscid_burgers_exact_jac2D(w, dt, JDxec, JDyec, Eye)
+
+        print(f" ... Working on timestep {i} with epsilon={epsilon} and neighbors={neighbors}")
+        
+        # Perform Gauss-Newton iterations to solve for updated reduced coordinates
+        y, resnorms, times = gauss_newton_pod_rbf(
+            res, jac, yp,
+            basis, basis2, epsilon, neighbors, kdtree, q_p_train, q_s_train   # Pass all required parameters directly
+        )
+
+        jac_timep, res_timep, ls_timep = times
+        num_its += len(resnorms)
+        jac_time += jac_timep
+        res_time += res_timep
+        ls_time += ls_timep
+
+        # Reconstruct the full state using the updated reduced coordinates
+        w = decode_rbf(y, epsilon, neighbors, kdtree, q_p_train, q_s_train, basis, basis2)
+
+        # Store the updated reduced coordinates and full state snapshot
+        red_coords[:, i + 1] = y
+        snaps[:, i + 1] = w
+
+        # Update previous state vectors for the next iteration
+        wp = w
+        yp = y
+
+    return snaps, (num_its, jac_time, res_time, ls_time)
+
+def inviscid_burgers_pod_rbf_2D(grid_x, grid_y, w0, dt, num_steps, mu, basis, basis2, kdtree, q_p_train, q_s_train, epsilon, neighbors):
     """
     Solves the 2D inviscid Burgers' equations using a Reduced-Order Model (ROM)
     augmented with Proper Orthogonal Decomposition (POD) and Radial Basis Functions (RBF).
@@ -1404,7 +1248,6 @@ def inviscid_burgers_pod_rbf_2D(grid_x, grid_y, w0, dt, num_steps, mu, basis, ba
     yp = y0.copy()  # Previous reduced coordinates (y_p)
 
     for i in range(num_steps):
-        COUNTER = i
         def res(w):
             return inviscid_burgers_res2D(w, grid_x, grid_y, dt, wp, mu, Dxec, Dyec)
 
@@ -1414,12 +1257,10 @@ def inviscid_burgers_pod_rbf_2D(grid_x, grid_y, w0, dt, num_steps, mu, basis, ba
         print(f" ... Working on timestep {i}")
         
         # Perform Gauss-Newton iterations to solve for updated reduced coordinates
-        t0 = time.time()
         y, resnorms, times = gauss_newton_pod_rbf(
             res, jac, yp,
-            basis, basis2, epsilon, neighbors, kdtree, q_p_train, q_s_train, scaler, kernel_type=kernel_type   # Pass all required parameters directly
+            basis, basis2, epsilon, neighbors, kdtree, q_p_train, q_s_train   # Pass all required parameters directly
         )
-        print(f"Time to gauss newton: {time.time() - t0:.6f} seconds")
 
         jac_timep, res_timep, ls_timep = times
         num_its += len(resnorms)
@@ -1428,12 +1269,7 @@ def inviscid_burgers_pod_rbf_2D(grid_x, grid_y, w0, dt, num_steps, mu, basis, ba
         ls_time += ls_timep
 
         # Reconstruct the full state using the updated reduced coordinates
-        '''
-        if resnorms.__len__()==10:
-            u_sample = np.load('param_snaps/mu1_5.19+mu2_0.026.npy')[:,COUNTER+1]
-            y = basis.T@u_sample
-        '''
-        w = decode_rbf(y, epsilon, neighbors, kdtree, q_p_train, q_s_train, basis, basis2, scaler, kernel_type=kernel_type)
+        w, epsilon = decode_rbf(y, epsilon, neighbors, kdtree, q_p_train, q_s_train, basis, basis2)
 
         # Store the updated reduced coordinates and full state snapshot
         red_coords[:, i + 1] = y
@@ -1689,7 +1525,7 @@ def gauss_newton_rnm(func, jac, y0, decode, jacfwdfunc,
     return y, resnorms, (jac_time, res_time, ls_time)
 
 def inviscid_burgers_pod_rbf_2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, basis, basis2,
-                                     epsilon, neighbors, kdtree, q_p_train, q_s_train, weights, scaler, kernel_type='gaussian'):
+                                     epsilon, neighbors, kdtree, q_p_train, q_s_train, weights, kernel_type='gaussian'):
     """
     Use a first-order Godunov spatial discretization and a second-order trapezoid rule
     time integrator to solve an LSPG manifold PROM for a parameterized inviscid 1D burgers
@@ -1726,7 +1562,7 @@ def inviscid_burgers_pod_rbf_2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, basi
 
     # Initial conditions
     y0 = basis.T @ w0  # Project w0 onto the POD basis
-    w0_reconstructed = decode_rbf(y0, epsilon, neighbors, kdtree, q_p_train, q_s_train, basis, basis2, scaler, kernel_type)
+    w0_reconstructed, _ = decode_rbf(y0, epsilon, neighbors, kdtree, q_p_train, q_s_train, basis, basis2, kernel_type)
 
     nred = y0.shape[0]
     snaps = np.zeros((w0_reconstructed.shape[0], num_steps + 1))
@@ -1745,12 +1581,14 @@ def inviscid_burgers_pod_rbf_2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, basi
     Vbar = basis2[idx, :]
 
     # Decode function using POD-RBF
-    def decode_func(x):
-        return decode_rbf(x, epsilon, neighbors, kdtree, q_p_train, q_s_train, V, Vbar, scaler, kernel_type)
+    def decode(x):
+        return V @ x + Vbar @ interpolate_with_rbf_nearest_neighbours_dynamic_gaussian(
+            kdtree, q_p_train, q_s_train, x, epsilon, neighbors
+        )
 
     # Jacobian function for POD-RBF
     def jac_rbf_func(x):
-        return jac_rbf(x, kdtree, q_p_train, q_s_train, V, Vbar, epsilon, neighbors, scaler, kernel_type)
+        return jac_rbf(x, kdtree, q_p_train, q_s_train, V, Vbar, epsilon, neighbors, kernel_type)
 
     print(f"Running POD-RBF M-ROM of size {nred} for mu1={mu[0]}, mu2={mu[1]}")
     lbc = None
@@ -1788,7 +1626,7 @@ def inviscid_burgers_pod_rbf_2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, basi
 
         # Solve using Gauss-Newton for POD-RBF
         y, resnorms, times = gauss_newton_pod_rbf_ecsw(
-            res, jac, yp, decode_func, jac_rbf_func, sample_inds, augmented_sample, sample_weights
+            res, jac, yp, decode, jac_rbf_func, sample_inds, augmented_sample, sample_weights
         )
         jac_timep, res_timep, ls_timep = times
         num_its += len(resnorms)
@@ -1797,7 +1635,7 @@ def inviscid_burgers_pod_rbf_2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, basi
         ls_time += ls_timep
 
         # Reconstruct the full state
-        w_reconstructed = decode_rbf(y, epsilon, neighbors, kdtree, q_p_train, q_s_train, V, Vbar, scaler, kernel_type)
+        w_reconstructed, _ = decode_rbf(y, epsilon, neighbors, kdtree, q_p_train, q_s_train, V, Vbar, kernel_type)
 
         red_coords[:, i + 1] = y
         wp = w_reconstructed
@@ -1806,8 +1644,8 @@ def inviscid_burgers_pod_rbf_2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, basi
 
     return red_coords, (num_its, jac_time, res_time, ls_time)
 
-def gauss_newton_pod_rbf(func, jac, y0, U_p, U_s, epsilon, neighbors, kdtree, q_p_train, q_s_train, scaler, kernel_type="gaussian",
-                     max_its=10, relnorm_cutoff=1e-5,
+def gauss_newton_pod_rbf(func, jac, y0, U_p, U_s, epsilon, neighbors, kdtree, q_p_train, q_s_train,
+                     max_its=20, relnorm_cutoff=1e-5,
                      min_delta=0.1):
     """
     Performs the Gauss-Newton iterative method to solve for reduced coordinates
@@ -1838,7 +1676,7 @@ def gauss_newton_pod_rbf(func, jac, y0, U_p, U_s, epsilon, neighbors, kdtree, q_
     y = y0.copy()
 
     # Reconstruct the full state from initial reduced coordinates
-    w = decode_rbf(y, epsilon, neighbors, kdtree, q_p_train, q_s_train, U_p, U_s, scaler, kernel_type=kernel_type)
+    w, epsilon = decode_rbf(y, epsilon, neighbors, kdtree, q_p_train, q_s_train, U_p, U_s, kernel_type='linear')
 
     # Calculate the initial residual norm
     init_norm = np.linalg.norm(func(w))
@@ -1859,10 +1697,10 @@ def gauss_newton_pod_rbf(func, jac, y0, U_p, U_s, epsilon, neighbors, kdtree, q_
 
         # Time Jacobian computation
         t0 = time.time()
+        J = jac(w)  # Full-order model Jacobian
         #V = jacfwdfunc(y, U_p, U_s)  # POD-RBF Jacobian: U_p + U_s @ J_RBF (handled inside jacfwdfunc)
         # Compute the POD-RBF Jacobian: U_p + U_s @ J_RBF with specific epsilon and neighbors
-        J = jac(w)  # Full-order model Jacobian
-        V = jac_rbf(y, kdtree, q_p_train, q_s_train, U_p, U_s, epsilon, neighbors, scaler, kernel_type=kernel_type)
+        V = jac_rbf(y, kdtree, q_p_train, q_s_train, U_p, U_s, epsilon, neighbors, kernel_type='linear')
         jac_time += time.time() - t0
 
         # Time residual computation
@@ -1880,7 +1718,7 @@ def gauss_newton_pod_rbf(func, jac, y0, U_p, U_s, epsilon, neighbors, kdtree, q_
         y += dy
 
         # Reconstruct the full state with updated reduced coordinates
-        w = decode_rbf(y, epsilon, neighbors, kdtree, q_p_train, q_s_train, U_p, U_s, scaler, kernel_type=kernel_type)
+        w, epsilon = decode_rbf(y, epsilon, neighbors, kdtree, q_p_train, q_s_train, U_p, U_s, kernel_type='linear')
 
     print('{} iterations: {:3.2e} relative norm'.format(i, resnorm / init_norm))
     
@@ -2567,7 +2405,7 @@ def gauss_newton_rnm_ecsw(func, jac, y0, decode, jacfwdfunc,
 
 def gauss_newton_pod_rbf_ecsw(func, jac, y0, decode_rbf, jac_rbf,
                               sample_inds, augmented_sample, weights,
-                              max_its=10, relnorm_cutoff=1e-5,
+                              max_its=20, relnorm_cutoff=1e-5,
                               min_delta=0.1):
     """
     Gauss-Newton solver for the POD-RBF approach using ECSW.
@@ -2810,7 +2648,7 @@ def compute_ECSW_training_matrix_2D_rnm(snaps, prev_snaps, basis, approx, jacfwd
     return C
 
 def compute_ECSW_training_matrix_2D_rbf(snaps, prev_snaps, basis, basis2, epsilon, neighbors,
-                                        kdtree, q_p_train, q_s_train, res, jac, grid_x, grid_y, dt, mu, scaler, kernel_type='gaussian'):
+                                        kdtree, q_p_train, q_s_train, res, jac, grid_x, grid_y, dt, mu, kernel_type='gaussian'):
     """
     Assembles the ECSW hyper-reduction training matrix for the POD-RBF model.
     Running a non-negative least squares algorithm with an early stopping criteria
@@ -2833,7 +2671,7 @@ def compute_ECSW_training_matrix_2D_rbf(snaps, prev_snaps, basis, basis2, epsilo
         y0 = basis.T @ snap  # Shape: (n_pod,)
 
         # Initialize variables for Gauss-Newton iterations
-        w_recon = decode_rbf(y0, epsilon, neighbors, kdtree, q_p_train, q_s_train, basis, basis2, scaler, kernel_type)
+        w_recon, _ = decode_rbf(y0, epsilon, neighbors, kdtree, q_p_train, q_s_train, basis, basis2, kernel_type)
         init_res = np.linalg.norm(w_recon - snap)
         approx_res = init_res
         num_it = 0
@@ -2843,11 +2681,11 @@ def compute_ECSW_training_matrix_2D_rbf(snaps, prev_snaps, basis, basis2, epsilo
         # Gauss-Newton iterations to refine q_p
         while abs(approx_res / init_res) > 1e-2 and num_it < 10:
             # Compute reconstruction and residual
-            w_recon = decode_rbf(y, epsilon, neighbors, kdtree, q_p_train, q_s_train, basis, basis2, scaler, kernel_type)
+            w_recon, _ = decode_rbf(y, epsilon, neighbors, kdtree, q_p_train, q_s_train, basis, basis2, kernel_type)
             res_recon = w_recon - snap  # Residual of reconstruction
 
             # Compute Jacobian of reconstruction
-            Jf = jac_rbf(y, kdtree, q_p_train, q_s_train, basis, basis2, epsilon, neighbors, scaler, kernel_type)
+            Jf = jac_rbf(y, kdtree, q_p_train, q_s_train, basis, basis2, epsilon, neighbors, kernel_type)
 
             # Solve for delta y using least squares
             JJ = Jf.T @ Jf
@@ -2856,7 +2694,7 @@ def compute_ECSW_training_matrix_2D_rbf(snaps, prev_snaps, basis, basis2, epsilo
             y -= dy  # Update reduced coordinates
 
             # Update residual
-            w_recon = decode_rbf(y, epsilon, neighbors, kdtree, q_p_train, q_s_train, basis, basis2, scaler, kernel_type)
+            w_recon, _ = decode_rbf(y, epsilon, neighbors, kdtree, q_p_train, q_s_train, basis, basis2, kernel_type)
             approx_res = np.linalg.norm(w_recon - snap)
             num_it += 1
 
@@ -2868,7 +2706,7 @@ def compute_ECSW_training_matrix_2D_rbf(snaps, prev_snaps, basis, basis2, epsilo
         J = jac(w_recon, dt, JDxec, JDyec, Eye)
 
         # Compute the Jacobian of the reconstruction
-        V = jac_rbf(y, kdtree, q_p_train, q_s_train, basis, basis2, epsilon, neighbors, scaler, kernel_type)
+        V = jac_rbf(y, kdtree, q_p_train, q_s_train, basis, basis2, epsilon, neighbors, kernel_type)
 
         # Compute Wi = J * V
         Wi = J @ V
