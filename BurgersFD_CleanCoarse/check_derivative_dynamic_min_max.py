@@ -87,12 +87,8 @@ def interpolate_and_compute_jacobian_gaussian_with_normalization(kdtree, q_p_tra
     # Adjust the Jacobian to account for Min-Max normalization
     # Extract scaling factors from the scaler
     scale = scaler.scale_  # This is 1 / (q_p_max - q_p_min)
-    # To get q_p_max - q_p_min, take 1 / scale
-    q_p_range = 1 / scale
-    # The derivative of the normalization is s_i = 1 / q_p_range_i
-    s_i = 1 / q_p_range
     # Adjust the Jacobian
-    jacobian = jacobian_norm * s_i[np.newaxis, :]
+    jacobian = jacobian_norm * scale[np.newaxis, :]
     
     return f_new, jacobian
 

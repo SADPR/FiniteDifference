@@ -1489,7 +1489,7 @@ def inviscid_burgers_rnm2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, rnm, ref,
     w0 = torch.tensor(w0.copy().ravel(), dtype=torch.float).unsqueeze(0).unsqueeze(0)
     y0 = basis.T@w0.squeeze()
     with torch.no_grad():
-        w0 = basis@y0 + basis2@rnm(y0)#basis2@rnm(torch.cat((y0, tmu)))
+        w0 = basis@y0 + basis2@rnm(torch.cat((y0, tmu))) #basis2@rnm(y0)
     nred = y0.shape[0]
     snaps = np.zeros((w0.shape[0], num_steps + 1))
     red_coords = np.zeros((nred, num_steps + 1))
@@ -1505,10 +1505,10 @@ def inviscid_burgers_rnm2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, rnm, ref,
     Vbar = basis2[idx, :]
     def decode(x, with_grad=True):
         if with_grad:
-            return V @ x + Vbar@rnm(x)#Vbar @ rnm(torch.cat((x, tmu)))
+            return V @ x + Vbar @ rnm(torch.cat((x, tmu))) #Vbar@rnm(x)
         else:
             with torch.no_grad():
-                return V @ x + Vbar@rnm(x)#Vbar @ rnm(torch.cat((x, tmu)))
+                return V @ x + Vbar @ rnm(torch.cat((x, tmu))) #Vbar@rnm(x)
 
     jacfwdfunc = functorch.jacfwd(decode)
     t0 = time.time()
@@ -1517,7 +1517,7 @@ def inviscid_burgers_rnm2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, rnm, ref,
     print('Time to compute 1 jacobian: {:3.2e}'.format((time.time() - t0)/100))
     t0 = time.time()
     for i in range(100):
-        rnm(yp)#rnm(torch.cat((yp, tmu)))
+        rnm(torch.cat((yp, tmu)))#rnm(yp)
     print('Time to evaluate network: {:3.2e}'.format((time.time() - t0)/100))
 
 
@@ -1557,7 +1557,7 @@ def inviscid_burgers_rnm2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, rnm, ref,
         ls_time += ls_timep
 
         with torch.no_grad():
-            w = V @ y + Vbar@rnm(y)#Vbar @ rnm(torch.cat((y, tmu)))
+            w = V @ y + Vbar @ rnm(torch.cat((y, tmu))) #Vbar@rnm(y)
 
         red_coords[:, i + 1] = y.squeeze().detach().numpy()
         wp = w.detach().clone()
