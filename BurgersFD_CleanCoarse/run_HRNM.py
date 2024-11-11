@@ -134,13 +134,13 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
         for imu, mu in enumerate(mu_samples):
           tmu = torch.tensor(mu.copy(), dtype=torch.float)
           mu_snaps = load_or_compute_snaps(mu, grid_x, grid_y, w0, dt, num_steps, snap_folder=snap_folder)
-
+          
           def decode(x, with_grad=True):
             if with_grad:
-              return basis @ x + basis2 @ rnm(x) #basis2 @ rnm(torch.cat((x, tmu)))
+              return  basis @ x + basis2 @ rnm(torch.cat((x, tmu))) #basis @ x + basis2 @ rnm(x)
             else:
               with torch.no_grad():
-                return basis @ x + basis2 @ rnm(x) #basis2 @ rnm(torch.cat((x, tmu)))
+                return basis @ x + basis2 @ rnm(torch.cat((x, tmu))) #basis @ x + basis2 @ rnm(x)
 
           import functorch
           jacfwdfunc = functorch.jacfwd(decode)
