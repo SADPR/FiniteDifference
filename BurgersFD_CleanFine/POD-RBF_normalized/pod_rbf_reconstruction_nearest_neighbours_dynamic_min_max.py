@@ -245,8 +245,8 @@ if __name__ == '__main__':
         print("Scaler file 'modes/scaler.pkl' not found.")
         exit(1)
 
-    epsilon = 0.0001
-    neighbors = 20
+    epsilon = 2
+    neighbors = 10
     r = 10  # Number of primary modes used
     num_modes = 150
 
@@ -273,13 +273,13 @@ if __name__ == '__main__':
         os.makedirs(results_dir)
 
     pod_rbf_file_path = os.path.join(results_dir, f"reconstructed_snapshot_pod_rbf_mu1_{target_mu[0]}_mu2_{target_mu[1]}.npy")
-    np.save(pod_rbf_file_path, pod_rbf_reconstructed)
-    print(f"POD-RBF reconstructed snapshot saved successfully to {pod_rbf_file_path}")
+    #np.save(pod_rbf_file_path, pod_rbf_reconstructed)
+    #print(f"POD-RBF reconstructed snapshot saved successfully to {pod_rbf_file_path}")
 
     if compare_pod:
         pod_file_path = os.path.join(results_dir, f"reconstructed_snapshot_pod_mu1_{target_mu[0]}_mu2_{target_mu[1]}.npy")
-        np.save(pod_file_path, pod_reconstructed)
-        print(f"Standard POD reconstructed snapshot saved successfully to {pod_file_path}")
+        #np.save(pod_file_path, pod_reconstructed)
+        #print(f"Standard POD reconstructed snapshot saved successfully to {pod_file_path}")
 
     # Calculate and compare reconstruction errors
     pod_rbf_error = np.linalg.norm(hdm_snap - pod_rbf_reconstructed) / np.linalg.norm(hdm_snap)
@@ -290,14 +290,14 @@ if __name__ == '__main__':
         print(f"Standard POD Reconstruction error: {pod_error:.6e}")
 
     # Define indices to plot (e.g., specific time steps or spatial indices)
-    '''
+    
     inds_to_plot = range(0, num_steps + 1, 100)  # Example: every 100 time steps
 
     # Prepare snapshots to plot
     snaps_to_plot = [hdm_snap, pod_rbf_reconstructed]
     labels = ['HDM', 'POD-RBF']
     colors = ['black', 'green']
-    linewidths = [2, 1]
+    linewidths = [2, 2]
 
     # If Standard POD reconstruction is available, add it to the plot
     if compare_pod and pod_reconstructed is not None:
@@ -308,6 +308,10 @@ if __name__ == '__main__':
 
     # Plot the comparison using subplots for x and y slices
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
+
+    # Add grids to both subplots
+    ax1.grid(True)
+    ax2.grid(True)
 
     for snap, label, color, lw in zip(snaps_to_plot, labels, colors, linewidths):
         plot_snaps(grid_x, grid_y, snap, inds_to_plot,
@@ -334,4 +338,4 @@ if __name__ == '__main__':
 
     # Optionally, display the plot
     # plt.show()
-    '''
+    
