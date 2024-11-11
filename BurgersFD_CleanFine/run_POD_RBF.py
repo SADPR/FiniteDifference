@@ -54,14 +54,14 @@ def main(mu1=4.75, mu2=0.02):
 
     # Set epsilon and neighbors based on the value of mu1
     if mu1 == 4.75:
+        epsilon = 2
+        neighbors = 5
+    elif mu1 == 4.56:
+        epsilon = 1
+        neighbors = 5
+    elif mu1 == 5.19:
         epsilon = 0.01
         neighbors = 20
-    elif mu1 == 4.56:
-        epsilon = 0.00001
-        neighbors = 20
-    elif mu1 == 5.19:
-        epsilon = 0.0001
-        neighbors = 40
     else:
         raise ValueError(f"Unsupported mu1 value: {mu1}")
 
@@ -91,7 +91,7 @@ def main(mu1=4.75, mu2=0.02):
     print(f'Snapshot saved as pod_rbf_prom_snaps_mu1_{mu[0]:.2f}_mu2_{mu[1]:.3f}.npy')
 
     # Plot and compare snapshots (currently commented out)
-    '''
+    
     inds_to_plot = range(0, NUM_STEPS + 1, 100)
     snaps_to_plot = [hdm_snaps, pod_rbf_prom_snaps]
     labels = ['HDM', 'POD-RBF']
@@ -104,7 +104,7 @@ def main(mu1=4.75, mu2=0.02):
     plt.grid()
     plt.legend(loc=2)
     plt.savefig(f'plot_mu1_{mu[0]:.2f}_mu2_{mu[1]:.3f}.png', dpi=300)
-    '''
+    
 
     # Return elapsed time and relative error
     return elapsed_time, relative_error
