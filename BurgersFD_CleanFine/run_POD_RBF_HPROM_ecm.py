@@ -11,6 +11,8 @@ from hypernet2D import (load_or_compute_snaps, make_2D_grid,
                         inviscid_burgers_res2D, inviscid_burgers_exact_jac2D,
                         compute_ECSW_training_matrix_2D_rbf, decode_rbf)
 from config import MU1_RANGE, MU2_RANGE, SAMPLES_PER_MU
+from empirical_cubature_method import EmpiricalCubatureMethod
+from randomized_singular_value_decomposition import RandomizedSingularValueDecomposition
 
 plt.rcParams.update({
     "text.usetex": True,
@@ -41,7 +43,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
     dt = 0.05
     num_steps = 500
-    num_cells_x, num_cells_y = 750, 750
+    num_cells_x, num_cells_y = 250, 250
     xl, xu, yl, yu = 0, 100, 0, 100
     grid_x, grid_y = make_2D_grid(xl, xu, yl, yu, num_cells_x, num_cells_y)
     u0 = np.ones((num_cells_y, num_cells_x))
@@ -68,14 +70,14 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
     # Set epsilon and neighbors based on the value of mu1 (adjust as needed)
     if mu1 == 4.75:
-        epsilon = 0.5
-        neighbors = 5
+        epsilon = 0.01
+        neighbors = 22
     elif mu1 == 4.56:
-        epsilon = 0.6
-        neighbors = 5
+        epsilon = 0.01
+        neighbors = 25
     elif mu1 == 5.19:
-        epsilon = 0.8
-        neighbors = 5
+        epsilon = 0.01
+        neighbors = 25
     else:
         raise ValueError(f"Unsupported mu1 value: {mu1}")
 
@@ -135,11 +137,18 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
         t1 = time.time()
         C = np.ascontiguousarray(C, dtype=np.float64)
         b = np.ascontiguousarray(C.sum(axis=1), dtype=np.float64)
-        weights, _ = nnls(C, b, maxiter=99999999)
-        print('nnls solve time: {}'.format(time.time() - t1))
+        u,_,_,_= RandomizedSingularValueDecomposition().Calculate(C.T, 1e-6)
+        hyper_reduction_element_selector = EmpiricalCubatureMethod()
+        hyper_reduction_element_selector.SetUp(u, InitialCandidatesSet = None, constrain_sum_of_weights=True, constrain_conditions = False)
+        hyper_reduction_element_selector.Run()
+        num_elements = C.shape[1]
+        weights = np.zeros(num_elements)
+        # Assign weights at specific indices
+        weights[hyper_reduction_element_selector.z] = hyper_reduction_element_selector.w
+        print('ECM solve time: {}'.format(time.time() - t1))
 
-        print('nnls solver residual: {}'.format(
-            np.linalg.norm(C @ weights - b) / np.linalg.norm(b)))
+        print('ECM solver residual: {}'.format(
+          np.linalg.norm(C @ weights - b) / np.linalg.norm(b)))
 
         weights = weights.reshape((num_cells_y - 2 * nn_y, num_cells_x - 2 * nn_x))
         full_weights = bc_w * np.ones((num_cells_y, num_cells_x))
@@ -158,7 +167,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
         plt.show()
         '''
     else:
-        weights = np.load('ecsw_weights_rnm_working.npy')
+        weights = np.load('ecsw_weights_rbf.npy')
     print('N_e = {}'.format(np.sum(weights > 0)))
     # END ECSW
 
@@ -181,7 +190,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
         pod_rbf_hprom_snaps[:, i] = decode_rbf(q_p_snapshot, epsilon, neighbors, kdtree, q_p_train, q_s_train, U_p, U_s, scaler, kernel_type="gaussian")
 
     # Calculate relative error
-    relative_error = 100 * np.linalg.norm(hdm_snaps[:,:] - pod_rbf_hprom_snaps[:,:]) / np.linalg.norm(hdm_snaps[:,:])
+    relative_error = 100 * np.linalg.norm(hdm_snaps[:,:450] - pod_rbf_hprom_snaps[:,:450]) / np.linalg.norm(hdm_snaps[:,:450])
     print(f'Relative error: {relative_error:.2f}%')
 
     # Save the snapshot to a file
@@ -190,16 +199,16 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
     # Optionally plot and compare snapshots
     
-    inds_to_plot = range(0, num_steps + 1, 100)
+    inds_to_plot = range(0, num_steps - 100 + 1, 100)
     snaps_to_plot = [hdm_snaps, pod_rbf_hprom_snaps]
     labels = ['HDM', 'POD-RBF']
     colors = ['black', 'green']
-    linewidths = [2, 2]
+    linewidths = [2, 1]
     fig, ax1, ax2 = compare_snaps(grid_x, grid_y, snaps_to_plot, inds_to_plot, labels, colors, linewidths)
 
     ax1.legend(), ax2.legend()
     plt.tight_layout()
-    save_path = f'hprom_pod-rbf_{mu_rom[0]:.2f}_{mu_rom[1]:.3f}.png'
+    save_path = f'pod-rbf_{mu_rom[0]:.2f}_{mu_rom[1]:.3f}.png'
     print(f'Saving as "{save_path}"')
     plt.savefig(save_path, dpi=300)
     plt.show()

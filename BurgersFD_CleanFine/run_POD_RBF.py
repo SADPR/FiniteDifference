@@ -16,8 +16,8 @@ from hypernet2D import load_or_compute_snaps, make_2D_grid, plot_snaps, inviscid
 # Parameters from previous setup
 DT = 0.05
 NUM_STEPS = 500
-NUM_CELLS_X = 750
-NUM_CELLS_Y = 750
+NUM_CELLS_X = 250
+NUM_CELLS_Y = 250
 XL, XU = 0, 100
 YL, YU = 0, 100
 
@@ -30,7 +30,7 @@ def compare_snaps(snaps_to_plot, inds_to_plot, labels, colors, linewidths):
                color=colors[i],
                linewidth=linewidths[i])
 
-def main(mu1=4.75, mu2=0.02):
+def main(mu1=5.19, mu2=0.026):
     # Define the grid and initial conditions
     grid_x, grid_y = make_2D_grid(XL, XU, YL, YU, NUM_CELLS_X, NUM_CELLS_Y)
     w0 = np.ones((NUM_CELLS_X * NUM_CELLS_Y * 2,))  # Example initial condition
@@ -47,6 +47,10 @@ def main(mu1=4.75, mu2=0.02):
         q_p_train = data['q_p']
         q_s_train = data['q_s']
 
+    # Load the scaler
+    with open('modes/scaler.pkl', 'rb') as f:
+        scaler = pickle.load(f)
+
     # Load the POD basis matrices
     U_p = np.load('modes/U_p.npy')
     U_s = np.load('modes/U_s.npy')
@@ -54,11 +58,11 @@ def main(mu1=4.75, mu2=0.02):
 
     # Set epsilon and neighbors based on the value of mu1
     if mu1 == 4.75:
-        epsilon = 2
-        neighbors = 5
+        epsilon = 0.01
+        neighbors = 20
     elif mu1 == 4.56:
-        epsilon = 1
-        neighbors = 5
+        epsilon = 0.01
+        neighbors = 20
     elif mu1 == 5.19:
         epsilon = 0.01
         neighbors = 20
@@ -74,24 +78,26 @@ def main(mu1=4.75, mu2=0.02):
 
     # Time-stepping to compute the Reduced-Order Model (ROM) using POD-RBF
     t0 = time.time()
-    pod_rbf_prom_snaps, man_times = inviscid_burgers_pod_rbf_2D(
-        grid_x, grid_y, w0, DT, NUM_STEPS, mu, U_p, U_s, kdtree, q_p_train, q_s_train, epsilon, neighbors
+    pod_rbf_prom_snaps, rbf_times = inviscid_burgers_pod_rbf_2D(
+        grid_x, grid_y, w0, DT, NUM_STEPS, mu, U_p, U_s, kdtree, q_p_train, q_s_train, epsilon, neighbors, scaler, kernel_type="gaussian"
     )
     elapsed_time = time.time() - t0
-    man_its, man_jac, man_res, man_ls = man_times
+    rbf_its, rbf_jac, rbf_res, rbf_ls = rbf_times
 
     print(f'Elapsed ROM time: {elapsed_time:.3e} seconds')
+
+    print(f'rbf_its: {rbf_its:.2f}, rbf_jac: {rbf_jac:.2f}, rbf_res: {rbf_res:.2f}, rbf_ls: {rbf_ls:.2f}')
 
     # Calculate relative error
     relative_error = 100 * np.linalg.norm(hdm_snaps - pod_rbf_prom_snaps) / np.linalg.norm(hdm_snaps)
     print(f'Relative error: {relative_error:.2f}%')
 
     # Save the snapshot to a file
-    np.save(f'pod_rbf_prom_snaps_mu1_{mu[0]:.2f}_mu2_{mu[1]:.3f}.npy', pod_rbf_prom_snaps)
-    print(f'Snapshot saved as pod_rbf_prom_snaps_mu1_{mu[0]:.2f}_mu2_{mu[1]:.3f}.npy')
+    #np.save(f'pod_rbf_prom_snaps_mu1_{mu[0]:.2f}_mu2_{mu[1]:.3f}.npy', pod_rbf_prom_snaps)
+    #print(f'Snapshot saved as pod_rbf_prom_snaps_mu1_{mu[0]:.2f}_mu2_{mu[1]:.3f}.npy')
 
     # Plot and compare snapshots (currently commented out)
-    
+    '''
     inds_to_plot = range(0, NUM_STEPS + 1, 100)
     snaps_to_plot = [hdm_snaps, pod_rbf_prom_snaps]
     labels = ['HDM', 'POD-RBF']
@@ -104,6 +110,9 @@ def main(mu1=4.75, mu2=0.02):
     plt.grid()
     plt.legend(loc=2)
     plt.savefig(f'plot_mu1_{mu[0]:.2f}_mu2_{mu[1]:.3f}.png', dpi=300)
+    plt.show()
+    '''
+    
     
 
     # Return elapsed time and relative error
