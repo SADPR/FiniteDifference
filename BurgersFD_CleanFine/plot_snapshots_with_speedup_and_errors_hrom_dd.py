@@ -91,9 +91,9 @@ def plot_npz_with_fom(npz_file, fom_snap_files, hprom_snap_files, hrnm_snap_file
 
         # Plot and save each model's comparison with FOM
         # Save paths for each plot
-        save_hprom_path = os.path.join(output_folder, f'M2_hprom_mu1_{mu1}_mu2_{mu2}.png')
-        save_hrnm_path = os.path.join(output_folder, f'M2_hrnm_mu1_{mu1}_mu2_{mu2}.png')
-        save_pod_rbf_hprom_path = os.path.join(output_folder, f'M2_pod_rbf_hprom_mu1_{mu1}_mu2_{mu2}.png')
+        save_hprom_path = os.path.join(output_folder, f'M2_dd_hprom_mu1_{mu1}_mu2_{mu2}.png')
+        save_hrnm_path = os.path.join(output_folder, f'M2_dd_hrnm_mu1_{mu1}_mu2_{mu2}.png')
+        save_pod_rbf_hprom_path = os.path.join(output_folder, f'M2_dd_pod_rbf_hprom_mu1_{mu1}_mu2_{mu2}.png')
 
         compare_snaps([fom_snaps, hprom_snaps], inds_to_plot, labels[:2], colors[:2], linewidths[:2], grid_x, grid_y, save_hprom_path)
         compare_snaps([fom_snaps, hrnm_snaps], inds_to_plot, [labels[0], labels[2]], [colors[0], colors[2]], [linewidths[0], linewidths[2]], grid_x, grid_y, save_hrnm_path)
@@ -136,7 +136,7 @@ def plot_npz_with_fom(npz_file, fom_snap_files, hprom_snap_files, hrnm_snap_file
 
 if __name__ == "__main__":
     # Define file paths and grid data
-    npz_file = 'rom_results_hprom.npz'
+    npz_file = 'rom_results_hprom_dd.npz'
     output_folder = 'hrom_plots'
 
     num_cells_x, num_cells_y = 750, 750  # Grid size in x and y directions
@@ -149,9 +149,9 @@ if __name__ == "__main__":
 
     # Dynamically generate snapshot file paths based on mu1 and mu2 values
     fom_snap_files = [f'hdm_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy' for mu1, mu2 in zip(mu1_values, mu2_values)]
-    hprom_snap_files = [f'hprom_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy' for mu1, mu2 in zip(mu1_values, mu2_values)]
-    hrnm_snap_files = [f'hrnm_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy' for mu1, mu2 in zip(mu1_values, mu2_values)]
-    pod_rbf_hprom_snap_files = [f'pod_rbf_hprom_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy' for mu1, mu2 in zip(mu1_values, mu2_values)]
+    hprom_snap_files = [f'dd_hprom_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy' for mu1, mu2 in zip(mu1_values, mu2_values)]
+    hrnm_snap_files = [f'dd_hrnm_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy' for mu1, mu2 in zip(mu1_values, mu2_values)]
+    pod_rbf_hprom_snap_files = [f'dd_pod_rbf_hprom_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy' for mu1, mu2 in zip(mu1_values, mu2_values)]
 
     # Run the plotting and speedup calculation
     plot_npz_with_fom(npz_file, fom_snap_files, hprom_snap_files, hrnm_snap_files, pod_rbf_hprom_snap_files, grid_x, grid_y, output_folder)

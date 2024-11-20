@@ -6,6 +6,7 @@ point
 import os
 import time
 
+from lsqnonneg import lsqnonneg
 from scipy.optimize import nnls
 from scipy.optimize import lsq_linear
 from sklearn.linear_model import LinearRegression
@@ -35,6 +36,8 @@ from train_autoencoder import (
                 MODEL_PATH
                 )
 from config import SEED
+from empirical_cubature_method import EmpiricalCubatureMethod
+from randomized_singular_value_decomposition import RandomizedSingularValueDecomposition
 
 plt.rcParams.update({
     "text.usetex": True,
@@ -47,7 +50,7 @@ def load_autoencoder_monitor(model_path, device, plot=False):
   sizes = np.load('sizes.npy', allow_pickle=True)
 
   print(sizes)
-  rnm = RNM_NN(sizes[0]+2, sizes[1]-sizes[0]).to(device)
+  rnm = RNM_NN(sizes[0], sizes[1]-sizes[0]).to(device)
   opt = optim.Adam(rnm.parameters(), lr=LR_INIT)
   scheduler = optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.1,
                                                    patience=LR_PATIENCE, verbose=True)
@@ -92,9 +95,9 @@ def get_snapshot_params():
       mu_samples += [[mu1, mu2]]
   return mu_samples
 
-def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
+def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
 
-    model_path = 'autoenc_working.pt'
+    model_path = 'autoenc.pt'
     snap_folder = 'param_snaps'
 
     # Query point of HPROM-ANN
@@ -105,7 +108,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
     dt = 0.05
     num_steps = 500
-    num_cells_x, num_cells_y = 750, 750
+    num_cells_x, num_cells_y = 250, 250
     xl, xu, yl, yu = 0, 100, 0, 100
     grid_x, grid_y = make_2D_grid(xl, xu, yl, yu, num_cells_x, num_cells_y)
     u0 = np.ones((num_cells_y, num_cells_x))
@@ -133,13 +136,13 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
         for imu, mu in enumerate(mu_samples):
           tmu = torch.tensor(mu.copy(), dtype=torch.float)
           mu_snaps = load_or_compute_snaps(mu, grid_x, grid_y, w0, dt, num_steps, snap_folder=snap_folder)
-          
+
           def decode(x, with_grad=True):
             if with_grad:
-              return  basis @ x + basis2 @ rnm(torch.cat((x, tmu))) #basis @ x + basis2 @ rnm(x)
+              return basis @ x + basis2 @ rnm(x) #basis2 @ rnm(torch.cat((x, tmu)))
             else:
               with torch.no_grad():
-                return basis @ x + basis2 @ rnm(torch.cat((x, tmu))) #basis @ x + basis2 @ rnm(x)
+                return basis @ x + basis2 @ rnm(x) #basis2 @ rnm(torch.cat((x, tmu)))
 
           import functorch
           jacfwdfunc = functorch.jacfwd(decode)
@@ -163,18 +166,20 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
         bc_w = 10
 
         t1 = time.time()
-        #weights, _, _ = lsqnonneg(C, C.sum(axis=1))
-        #weights, _ = nnls(C, C.sum(axis=1), maxiter=99999999)
-        # Using scikit-learn's LinearRegression with positive constraint
-        reg_nnls = LinearRegression(positive=True)
-        reg_nnls.fit(C, C.sum(axis=1))  # Directly passing the target as C.sum(axis=1)
+        C = np.ascontiguousarray(C, dtype=np.float64)
+        b = np.ascontiguousarray(C.sum(axis=1), dtype=np.float64)
+        u,_,_,_= RandomizedSingularValueDecomposition().Calculate(C.T, 1e-6)
+        hyper_reduction_element_selector = EmpiricalCubatureMethod()
+        hyper_reduction_element_selector.SetUp(u, InitialCandidatesSet = None, constrain_sum_of_weights=True, constrain_conditions = False)
+        hyper_reduction_element_selector.Run()
+        num_elements = C.shape[1]
+        weights = np.zeros(num_elements)
+        # Assign weights at specific indices
+        weights[hyper_reduction_element_selector.z] = hyper_reduction_element_selector.w
+        print('ECM solve time: {}'.format(time.time() - t1))
 
-        # Retrieve the weights
-        weights = reg_nnls.coef_.flatten()  # Flatten to match the shape as with `nnls`
-        print('nnls solve time: {}'.format(time.time() - t1))
-
-        print('nnls solver residual: {}'.format(
-          np.linalg.norm(C @ weights - C.sum(axis=1)) / np.linalg.norm(C.sum(axis=1))))
+        print('ECM solver residual: {}'.format(
+          np.linalg.norm(C @ weights - b) / np.linalg.norm(b)))
 
         weights = weights.reshape((num_cells_y - 2*nn_y, num_cells_x - 2*nn_x))
         full_weights = bc_w*np.ones((num_cells_y, num_cells_x))
@@ -193,7 +198,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
         plt.show()
         '''
     else:
-        weights = np.load('ecsw_weights_rnm_working.npy')
+        weights = np.load('ecsw_weights_rnm.npy')
     print('N_e = {}'.format(np.sum(weights > 0)))
     #END ECSW
 
@@ -209,10 +214,10 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
     def decode(x, with_grad=True):
         if with_grad:
-            return basis @ x + basis2 @ rnm(torch.cat((x, tmu)))#rnm(x) 
+            return basis @ x + basis2 @ rnm(x)
         else:
             with torch.no_grad():
-                return basis @ x + basis2 @ rnm(torch.cat((x, tmu)))#rnm(x)
+                return basis @ x + basis2 @ rnm(x)
 
     # Compute the ROM snapshots using the decode function
     man_snaps = np.array([decode(torch.tensor(ys[:, i].copy(), dtype=torch.float), False).numpy() for i in range(ys.shape[1])]).T

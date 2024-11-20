@@ -1,9 +1,9 @@
 import os
 import numpy as np
 import run_fom
-import run_HPROM
-import run_HRNM
-import run_POD_RBF_HPROM
+import run_HPROM_ecsw_joshua
+import run_HRNM_ecsw_joshua
+import run_POD_RBF_HPROM_ecsw_joshua
 
 # Define the mu1 and mu2 parameters
 mu1_values = [5.19, 4.56, 4.75]
@@ -25,7 +25,7 @@ if all(x is None for x in fom_times) and os.path.exists('rom_results_hprom.npz')
     fom_errors = list(fom_hprom_data.get('fom_errors', fom_errors))
 
 # Load HPROM results from rom_results_hprom.npz if available
-if os.path.exists('rom_results_hprom.npz'):
+if os.path.exists('rom_results_hprom_dd.npz'):
     hprom_data = np.load('rom_results_hprom.npz', allow_pickle=True)
     hprom_times = list(hprom_data.get('hprom_times', [None] * len(mu1_values)))
     hprom_errors = list(hprom_data.get('hprom_errors', [None] * len(mu1_values)))
@@ -60,43 +60,43 @@ for i, (mu1, mu2) in enumerate(zip(mu1_values, mu2_values)):
         print(f"FOM results already exist for mu1 = {mu1}, mu2 = {mu2}. Skipping FOM run.")
     
     # Run HPROM if results are missing or need to be updated
-    hprom_file = f"hprom_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy"
+    hprom_file = f"dd_hprom_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy"
     if not check_if_exists(hprom_file) or hprom_times[i] is None:
         print(f"HPROM results not found or missing for mu1 = {mu1}, mu2 = {mu2}. Running HPROM...")
-        hprom_time, hprom_error = run_HPROM.main(mu1, mu2)
+        hprom_time, hprom_error = run_HPROM_ecsw_joshua.main(mu1, mu2)
         hprom_times[i] = hprom_time
         hprom_errors[i] = hprom_error
     else:
         print(f"HPROM results already exist for mu1 = {mu1}, mu2 = {mu2}. Skipping HPROM run.")
     
     # Run HRNM if results are missing or need to be updated
-    hrnm_file = f"hrnm_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy"
+    hrnm_file = f"dd_hrnm_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy"
     if not check_if_exists(hrnm_file) or hrnm_times[i] is None:
         print(f"HRNM results not found or missing for mu1 = {mu1}, mu2 = {mu2}. Running HRNM...")
-        hrnm_time, hrnm_error = run_HRNM.main(mu1, mu2)
+        hrnm_time, hrnm_error = run_HRNM_ecsw_joshua.main(mu1, mu2)
         hrnm_times[i] = hrnm_time
         hrnm_errors[i] = hrnm_error
     else:
         print(f"HRNM results already exist for mu1 = {mu1}, mu2 = {mu2}. Skipping HRNM run.")
 
     # Run POD-RBF HPROM if results are missing or need to be updated
-    pod_rbf_hprom_file = f"pod_rbf_hprom_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy"
+    pod_rbf_hprom_file = f"dd_pod_rbf_hprom_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy"
     if not check_if_exists(pod_rbf_hprom_file) or pod_rbf_hprom_times[i] is None:
         print(f"POD-RBF HPROM results not found or missing for mu1 = {mu1}, mu2 = {mu2}. Running POD-RBF HPROM...")
-        pod_rbf_hprom_time, pod_rbf_hprom_error = run_POD_RBF_HPROM.main(mu1, mu2)
+        pod_rbf_hprom_time, pod_rbf_hprom_error = run_POD_RBF_HPROM_ecsw_joshua.main(mu1, mu2)
         pod_rbf_hprom_times[i] = pod_rbf_hprom_time
         pod_rbf_hprom_errors[i] = pod_rbf_hprom_error
     else:
         print(f"POD-RBF HPROM results already exist for mu1 = {mu1}, mu2 = {mu2}. Skipping POD-RBF HPROM run.")
 
 # Save the updated results in the .npz file, overwriting old results
-np.savez('rom_results_hprom.npz',
+np.savez('rom_results_hprom_dd.npz',
          fom_times=fom_times, fom_errors=fom_errors,
          hprom_times=hprom_times, hprom_errors=hprom_errors,
          hrnm_times=hrnm_times, hrnm_errors=hrnm_errors,
          pod_rbf_hprom_times=pod_rbf_hprom_times, pod_rbf_hprom_errors=pod_rbf_hprom_errors)
 
-print("Results updated and saved to 'rom_results_hprom.npz'")
+print("Results updated and saved to 'rom_results_hprom_dd.npz'")
 
 
 

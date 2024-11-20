@@ -47,7 +47,7 @@ def load_autoencoder_monitor(model_path, device, plot=False):
   sizes = np.load('sizes.npy', allow_pickle=True)
 
   print(sizes)
-  rnm = RNM_NN(sizes[0]+2, sizes[1]-sizes[0]).to(device)
+  rnm = RNM_NN(sizes[0], sizes[1]-sizes[0]).to(device)
   opt = optim.Adam(rnm.parameters(), lr=LR_INIT)
   scheduler = optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.1,
                                                    patience=LR_PATIENCE, verbose=True)
@@ -92,9 +92,9 @@ def get_snapshot_params():
       mu_samples += [[mu1, mu2]]
   return mu_samples
 
-def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
+def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
 
-    model_path = 'autoenc_working.pt'
+    model_path = 'autoenc.pt'
     snap_folder = 'param_snaps'
 
     # Query point of HPROM-ANN
@@ -105,7 +105,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
     dt = 0.05
     num_steps = 500
-    num_cells_x, num_cells_y = 750, 750
+    num_cells_x, num_cells_y = 250, 250
     xl, xu, yl, yu = 0, 100, 0, 100
     grid_x, grid_y = make_2D_grid(xl, xu, yl, yu, num_cells_x, num_cells_y)
     u0 = np.ones((num_cells_y, num_cells_x))
@@ -151,49 +151,93 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
           Clist += [Ci]
 
         C = np.vstack(Clist)
+        
+        # Boundary condition handling
         idxs = np.zeros((num_cells_y, num_cells_x))
-
-        # Select boundaries
-        nn_x = 1
+        nn_xl = 1
+        nn_xr = 1
         nn_y = 1
-        idxs[nn_y:-nn_y, nn_x:-nn_x] = 1
-        C = C[:, (idxs == 1).ravel()]
+        bc_w = 50
+        idxs[nn_y:-nn_y, nn_xl:-nn_xr] = 1
+        C_cor = bc_w * C[:, (idxs == 0).ravel()]
+        C_interior = C[:, (idxs == 1).ravel()]
 
-        # Weighting for boundary
-        bc_w = 10
+        # Adjust the right-hand side vector
+        b_cor = C_cor.sum(axis=1)
+        b_interior = C_interior.sum(axis=1)
+        b = b_interior + b_cor  # Total right-hand side vector
 
         t1 = time.time()
-        #weights, _, _ = lsqnonneg(C, C.sum(axis=1))
-        #weights, _ = nnls(C, C.sum(axis=1), maxiter=99999999)
-        # Using scikit-learn's LinearRegression with positive constraint
-        reg_nnls = LinearRegression(positive=True)
-        reg_nnls.fit(C, C.sum(axis=1))  # Directly passing the target as C.sum(axis=1)
 
-        # Retrieve the weights
-        weights = reg_nnls.coef_.flatten()  # Flatten to match the shape as with `nnls`
-        print('nnls solve time: {}'.format(time.time() - t1))
+        # Multilevel NNLS approach with 2 levels
+        num_subdomains = 20  # Number of subdomains at level 1
+        C_subdomains = np.array_split(C_interior, num_subdomains, axis=1)
 
-        print('nnls solver residual: {}'.format(
-          np.linalg.norm(C @ weights - C.sum(axis=1)) / np.linalg.norm(C.sum(axis=1))))
+        # Level 1: Solve NNLS subproblems independently
+        subdomain_weights = []
+        subdomain_indices = []
+        for i, C_i in enumerate(C_subdomains):
+            print(f"Solving NNLS for subdomain {i+1}/{num_subdomains}")
+            b_i = C_i.sum(axis=1)  # Right-hand side vector for subdomain
+            w_i, res_i = nnls(C_i, b_i)
+            # Store only the non-zero weights
+            non_zero_indices = np.nonzero(w_i)[0]
+            print(f'Subdomain {i+1} size of reduced mesh: {non_zero_indices.shape[0]}')
+            w_i_nz = w_i[non_zero_indices]
+            subdomain_weights.append(w_i_nz)
+            # Map indices to global indices
+            start_idx = sum(C_j.shape[1] for C_j in C_subdomains[:i])
+            indices_i = np.arange(start_idx, start_idx + C_i.shape[1])
+            # Get the global indices of the non-zero weights (relative to C_interior)
+            indices_i_nz = indices_i[non_zero_indices]
+            subdomain_indices.append(indices_i_nz)
 
-        weights = weights.reshape((num_cells_y - 2*nn_y, num_cells_x - 2*nn_x))
-        full_weights = bc_w*np.ones((num_cells_y, num_cells_x))
-        full_weights[idxs > 0] = weights.ravel()
-        weights = full_weights.ravel()
-        np.save('ecsw_weights_rnm', weights)
-        '''
+        # Level 2: Combine the non-zero columns from Level 1
+        # Collect all non-zero weights and their indices
+        all_non_zero_indices = np.concatenate(subdomain_indices)
+        all_non_zero_weights = np.concatenate(subdomain_weights)
+        # Extract the corresponding columns from the original C_interior matrix
+        C_level2 = C_interior[:, all_non_zero_indices]
+        # Build z_level2 (weights from Level 1)
+        z_level2 = all_non_zero_weights
+        # Compute b_level2 by multiplying C_level2 with z_level2
+        b_level2 = C_level2 @ z_level2
+
+        # Solve NNLS at Level 2
+        print("Solving NNLS at Level 2")
+        w_level2, _ = nnls(C_level2, b_level2)
+        # Map weights back to global indices (relative to C_interior)
+        weights_interior = np.zeros(C_interior.shape[1])
+        weights_interior[all_non_zero_indices] = w_level2
+
+        # Handle boundary weights
+        weights_boundary, _ = nnls(C_cor, b_cor)
+
+        # Assemble full weights vector
+        weights_full = np.zeros(C.shape[1])
+        # Map weights_interior back to full domain indices
+        interior_indices = np.where(idxs.ravel() == 1)[0]
+        weights_full[interior_indices] = weights_interior
+        # Assign boundary weights
+        boundary_indices = np.where(idxs.ravel() == 0)[0]
+        weights_full[boundary_indices] = weights_boundary
+
+        # Reshape weights
+        weights = weights_full.reshape((num_cells_y, num_cells_x))
+        np.save('ecsw_weights_rnm_multilevel', weights)
         plt.clf()
+        plt.rcParams.update({
+            "text.usetex": True,
+            "mathtext.fontset": "stix",
+            "font.family": ["STIXGeneral"]})
         plt.rc('font', size=16)
-        plt.spy(weights.reshape((250, 250)))
+        plt.spy(weights)
         plt.xlabel('$x$ cell index')
         plt.ylabel('$y$ cell index')
-        plt.title('PROM-NN Reduced Mesh')
         plt.tight_layout()
-        plt.savefig('prom-nn-reduced-mesh.png', dpi=300)
-        plt.show()
-        '''
+        plt.savefig('ecsw_weights_rnm_multilevel.png', dpi=300)
     else:
-        weights = np.load('ecsw_weights_rnm_working.npy')
+        weights = np.load('ecsw_weights_rnm_multilevel.npy')
     print('N_e = {}'.format(np.sum(weights > 0)))
     #END ECSW
 
@@ -209,10 +253,10 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
     def decode(x, with_grad=True):
         if with_grad:
-            return basis @ x + basis2 @ rnm(torch.cat((x, tmu)))#rnm(x) 
+            return basis @ x + basis2 @ rnm(x)#basis2 @ rnm(torch.cat((x, tmu)))
         else:
             with torch.no_grad():
-                return basis @ x + basis2 @ rnm(torch.cat((x, tmu)))#rnm(x)
+                return basis @ x + basis2 @ rnm(x)#basis2 @ rnm(torch.cat((x, tmu)))
 
     # Compute the ROM snapshots using the decode function
     man_snaps = np.array([decode(torch.tensor(ys[:, i].copy(), dtype=torch.float), False).numpy() for i in range(ys.shape[1])]).T

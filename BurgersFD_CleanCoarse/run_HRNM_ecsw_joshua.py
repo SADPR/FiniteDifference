@@ -6,9 +6,11 @@ point
 import os
 import time
 
+from lsqnonneg import lsqnonneg
 from scipy.optimize import nnls
 from scipy.optimize import lsq_linear
 from sklearn.linear_model import LinearRegression
+from joblib import Parallel, delayed
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -92,9 +94,9 @@ def get_snapshot_params():
       mu_samples += [[mu1, mu2]]
   return mu_samples
 
-def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
+def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
 
-    model_path = 'autoenc_working.pt'
+    model_path = 'autoenc.pt'
     snap_folder = 'param_snaps'
 
     # Query point of HPROM-ANN
@@ -105,7 +107,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
     dt = 0.05
     num_steps = 500
-    num_cells_x, num_cells_y = 750, 750
+    num_cells_x, num_cells_y = 250, 250
     xl, xu, yl, yu = 0, 100, 0, 100
     grid_x, grid_y = make_2D_grid(xl, xu, yl, yu, num_cells_x, num_cells_y)
     u0 = np.ones((num_cells_y, num_cells_x))
@@ -151,49 +153,53 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
           Clist += [Ci]
 
         C = np.vstack(Clist)
+        
         idxs = np.zeros((num_cells_y, num_cells_x))
 
-        # Select boundaries
-        nn_x = 1
+        nn_xl = 1
+        nn_xr = 1
         nn_y = 1
-        idxs[nn_y:-nn_y, nn_x:-nn_x] = 1
+        bc_w = 50
+        idxs[nn_y:-nn_y, nn_xl:-nn_xr] = 1
+        # idxs[:, nn_xl:] = 1
+        C_cor = bc_w * C[:, (idxs == 0).ravel()]
         C = C[:, (idxs == 1).ravel()]
 
-        # Weighting for boundary
-        bc_w = 10
-
         t1 = time.time()
-        #weights, _, _ = lsqnonneg(C, C.sum(axis=1))
-        #weights, _ = nnls(C, C.sum(axis=1), maxiter=99999999)
-        # Using scikit-learn's LinearRegression with positive constraint
-        reg_nnls = LinearRegression(positive=True)
-        reg_nnls.fit(C, C.sum(axis=1))  # Directly passing the target as C.sum(axis=1)
 
-        # Retrieve the weights
-        weights = reg_nnls.coef_.flatten()  # Flatten to match the shape as with `nnls`
-        print('nnls solve time: {}'.format(time.time() - t1))
+        #Splitting up C
+        combined_weights = []
+        res = Parallel(n_jobs=-1, verbose=10)(delayed(nnls)(c, c.sum(axis=1), maxiter=9999999999, atol=1e-4) for c in np.array_split(C,12,axis=1))
+        for wi in res:
+            combined_weights += [wi[0]]
+        weights = np.hstack(combined_weights)
 
         print('nnls solver residual: {}'.format(
-          np.linalg.norm(C @ weights - C.sum(axis=1)) / np.linalg.norm(C.sum(axis=1))))
-
-        weights = weights.reshape((num_cells_y - 2*nn_y, num_cells_x - 2*nn_x))
-        full_weights = bc_w*np.ones((num_cells_y, num_cells_x))
+            np.linalg.norm(C @ weights - C.sum(axis=1)) / np.linalg.norm(
+                - C.sum(axis=1))))
+        
+        print('nnls solve time: {}'.format(time.time() - t1))
+        
+        weights = weights.reshape((num_cells_y - 2 * nn_y, num_cells_x - (nn_xl + nn_xr)))
+        full_weights = bc_w * np.ones((num_cells_y, num_cells_x))
+        #full_weights = np.ones((num_cells_y, num_cells_x)) * weights.sum() / 100
         full_weights[idxs > 0] = weights.ravel()
         weights = full_weights.ravel()
-        np.save('ecsw_weights_rnm', weights)
-        '''
+        np.save('ecsw_weights_hrnm_domain_decomposition', weights)
         plt.clf()
+        plt.rcParams.update({
+          "text.usetex": True,
+          "mathtext.fontset": "stix",
+          "font.family": ["STIXGeneral"]})
         plt.rc('font', size=16)
-        plt.spy(weights.reshape((250, 250)))
+        plt.spy(weights.reshape((num_cells_y, num_cells_x)))
         plt.xlabel('$x$ cell index')
         plt.ylabel('$y$ cell index')
-        plt.title('PROM-NN Reduced Mesh')
+#        plt.title('PROM Reduced Mesh')
         plt.tight_layout()
-        plt.savefig('prom-nn-reduced-mesh.png', dpi=300)
-        plt.show()
-        '''
+        plt.savefig('prom-reduced-mesh.png', dpi=300)
     else:
-        weights = np.load('ecsw_weights_rnm_working.npy')
+        weights = np.load('ecsw_weights_hrnm_domain_decomposition.npy')
     print('N_e = {}'.format(np.sum(weights > 0)))
     #END ECSW
 
@@ -209,10 +215,10 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
     def decode(x, with_grad=True):
         if with_grad:
-            return basis @ x + basis2 @ rnm(torch.cat((x, tmu)))#rnm(x) 
+            return basis @ x + basis2 @ rnm(x)
         else:
             with torch.no_grad():
-                return basis @ x + basis2 @ rnm(torch.cat((x, tmu)))#rnm(x)
+                return basis @ x + basis2 @ rnm(x)
 
     # Compute the ROM snapshots using the decode function
     man_snaps = np.array([decode(torch.tensor(ys[:, i].copy(), dtype=torch.float), False).numpy() for i in range(ys.shape[1])]).T
@@ -231,7 +237,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
     ax1.legend(), ax2.legend()
     plt.tight_layout()
-    save_path = f'hprom-ann_{mu_rom[0]:.2f}_{mu_rom[1]:.3f}_n{sizes[0]}_nbar{sizes[1]-sizes[0]}.png'
+    save_path = f'dd_hprom-ann_{mu_rom[0]:.2f}_{mu_rom[1]:.3f}_n{sizes[0]}_nbar{sizes[1]-sizes[0]}.png'
     print(f'Saving as "{save_path}"')
     plt.savefig(save_path, dpi=300)
     plt.show()
@@ -241,7 +247,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
     print(f'rnm_its: {man_its:.2f}, rnm_jac: {man_jac:.2f}, rnm_res: {man_res:.2f}, rnm_ls: {man_ls:.2f}')
 
     # Save the HRNM snapshot to a file
-    np.save(f'hrnm_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy', man_snaps)
+    np.save(f'dd_hrnm_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy', man_snaps)
     print(f'Snapshot saved as hrnm_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy')
 
     # Compute and print the relative error
@@ -252,4 +258,4 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
     return elapsed_time, relative_error
 
 if __name__ == "__main__":
-    main(compute_ecsw=False)
+    main(compute_ecsw=True)

@@ -82,7 +82,7 @@ def compare_snaps(snaps_to_plot, inds_to_plot, labels, colors, linewidths):
 
 def main(mu1=4.75, mu2=0.02):
 
-    model_path = 'autoenc.pt'
+    model_path = 'autoenc_.pt'
     snap_folder = 'param_snaps'
 
     mu_rom = [mu1, mu2]

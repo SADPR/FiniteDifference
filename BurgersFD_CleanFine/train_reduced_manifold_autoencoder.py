@@ -137,8 +137,8 @@ def main(num_vecs=10, max_v2=150, compute_basis=False):
         print(f"SVD computation time: {t1_svd - t0_svd:.3f} seconds")
 
         # Save the computed basis and singular values for future use
-        np.save('basis_', basis)
-        np.save('sigma_', sigma)
+        np.save('basis', basis)
+        np.save('sigma', sigma)
 
     # Save sizes and adjust for max_v2
     np.save('sizes', [num_vecs, max_v2])
@@ -159,6 +159,15 @@ def main(num_vecs=10, max_v2=150, compute_basis=False):
     rng = torch.Generator()
     rng = rng.manual_seed(SEED)
     np_rng = np.random.default_rng(SEED)
+
+    mu_label0 = []
+    mu_label1 = []
+    for mu in mu_samples:
+      vec = mu[0]
+      mu_label0.append(np.ones((1, num_steps + 1)) * vec)
+      vec = mu[1]
+      mu_label1.append(np.ones((1, num_steps + 1)) * vec)
+    qs = np.concatenate((qs[:num_vecs, :], np.hstack(mu_label0), np.hstack(mu_label1), qs[num_vecs:, :]))
 
     # **Prepare Training Data Without Labels**
     train_q, val_q = random_split(qs.T, TRAIN_FRAC, np_rng)
@@ -211,4 +220,4 @@ def main(num_vecs=10, max_v2=150, compute_basis=False):
 
 
 if __name__ == "__main__":
-    main(compute_basis=False)
+    main(compute_basis=True)

@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 from hypernet2D import compute_ECSW_training_matrix_2D, make_2D_grid, plot_snaps, \
     load_or_compute_snaps, inviscid_burgers_implicit2D_LSPG, POD, inviscid_burgers_res2D, \
     inviscid_burgers_exact_jac2D, inviscid_burgers_ecsw_fixed
+from empirical_cubature_method import EmpiricalCubatureMethod
+from randomized_singular_value_decomposition import RandomizedSingularValueDecomposition
 
 plt.rcParams.update({
     "text.usetex": True,
@@ -21,7 +23,7 @@ plt.rcParams.update({
     "font.family": ["STIXGeneral"]})
 plt.rc('font', size=13)
 
-def main(mu1= 4.74, mu2=0.02, compute_ecsw = False):
+def main(mu1= 4.75, mu2=0.02, compute_ecsw = True):
 
     snap_folder = 'param_snaps'
     num_vecs = 95
@@ -78,12 +80,20 @@ def main(mu1= 4.74, mu2=0.02, compute_ecsw = False):
         t1 = time.time()
         C = np.ascontiguousarray(C, dtype=np.float64)
         b = np.ascontiguousarray(C.sum(axis=1), dtype=np.float64)
-        weights, _ = nnls(C, b, maxiter=99999999)
-        print('nnls solve time: {}'.format(time.time() - t1))
+        u,_,_,_= RandomizedSingularValueDecomposition().Calculate(C.T, 1e-8)
+        hyper_reduction_element_selector = EmpiricalCubatureMethod()
+        hyper_reduction_element_selector.SetUp(u, InitialCandidatesSet = None, constrain_sum_of_weights=True, constrain_conditions = False)
+        hyper_reduction_element_selector.Run()
+        num_elements = C.shape[1]
+        weights = np.zeros(num_elements)
+        # Assign weights at specific indices
+        weights[hyper_reduction_element_selector.z] = hyper_reduction_element_selector.w
 
-        print('nnls solver residual: {}'.format(
-            np.linalg.norm(C @ weights - C.sum(axis=1)) / np.linalg.norm(
-                - C.sum(axis=1))))
+        #weights, _ = nnls(C, b, maxiter=99999999)
+        print('ECM solve time: {}'.format(time.time() - t1))
+
+        print('ECM solver residual: {}'.format(
+            np.linalg.norm(C @ weights - b) / np.linalg.norm(b)))
 
         weights = weights.reshape((num_cells_y - 2 * nn_y, num_cells_x - (nn_xl + nn_xr)))
         full_weights = bc_w * np.ones((num_cells_y, num_cells_x))
@@ -91,7 +101,8 @@ def main(mu1= 4.74, mu2=0.02, compute_ecsw = False):
         # weights = np.concatenate((np.ones((num_cells_y, nn)), weights), axis=1)
         weights = full_weights.ravel()
         np.save('ecsw_weights_lspg', weights)
-        plt.rcParams.update({
+        '''
+	plt.rcParams.update({
           "text.usetex": True,
           "mathtext.fontset": "stix",
           "font.family": ["STIXGeneral"]})
@@ -101,9 +112,10 @@ def main(mu1= 4.74, mu2=0.02, compute_ecsw = False):
         plt.ylabel('$y$ cell index')
         plt.title('PROM Reduced Mesh')
         plt.tight_layout()
-        plt.savefig('prom-reduced-mesh.png', dpi=300)   
+        plt.savefig('prom-reduced-mesh.png', dpi=300) 
+        '''  
     else:
-        weights = np.load('ecsw_weights_lspg_working.npy')
+        weights = np.load('ecsw_weights_lspg.npy')
     print('N_e = {}'.format(np.sum(weights > 0)))
 
     # Time-stepping to compute the HPROM at the out-of-sample parameter point

@@ -6,6 +6,8 @@ BurgersFD_CleanCoarse/__pycache__/
 *.png
 *.npz
 *.npy
+*.gif
+*.mp4
 BurgersFD_CleanFine/runs/
 BurgersFD_CleanFine/modes/
 BurgersFD_CleanFine/param_snaps/

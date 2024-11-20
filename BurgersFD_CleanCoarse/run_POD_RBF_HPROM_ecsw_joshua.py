@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import pickle
 
 from scipy.optimize import nnls
+from joblib import Parallel, delayed
 
 from hypernet2D import (load_or_compute_snaps, make_2D_grid,
                         plot_snaps, inviscid_burgers_pod_rbf_2D_ecsw,
@@ -29,7 +30,7 @@ def compare_snaps(grid_x, grid_y, snaps_to_plot, inds_to_plot, labels, colors, l
 
   return fig, ax1, ax2
 
-def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
+def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
     # Paths and parameters
     snap_folder = 'param_snaps'
 
@@ -41,7 +42,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
     dt = 0.05
     num_steps = 500
-    num_cells_x, num_cells_y = 750, 750
+    num_cells_x, num_cells_y = 250, 250
     xl, xu, yl, yu = 0, 100, 0, 100
     grid_x, grid_y = make_2D_grid(xl, xu, yl, yu, num_cells_x, num_cells_y)
     u0 = np.ones((num_cells_y, num_cells_x))
@@ -57,7 +58,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
         kdtree = data['KDTree']
         q_p_train = data['q_p']
         q_s_train = data['q_s']
-
+    
     # Load the scaler
     with open('modes/scaler.pkl', 'rb') as f:
         scaler = pickle.load(f)
@@ -68,14 +69,14 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
     # Set epsilon and neighbors based on the value of mu1 (adjust as needed)
     if mu1 == 4.75:
-        epsilon = 0.5
-        neighbors = 5
+        epsilon = 0.01
+        neighbors = 20
     elif mu1 == 4.56:
-        epsilon = 0.6
-        neighbors = 5
+        epsilon = 0.00001
+        neighbors = 20
     elif mu1 == 5.19:
-        epsilon = 0.8
-        neighbors = 5
+        epsilon = 0.0001
+        neighbors = 40
     else:
         raise ValueError(f"Unsupported mu1 value: {mu1}")
 
@@ -87,31 +88,10 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
         Clist = []
         for imu, mu in enumerate(mu_samples):
-            
             mu_snaps = load_or_compute_snaps(mu, grid_x, grid_y, w0, dt, num_steps, snap_folder=snap_folder)
             prev_snaps = mu_snaps[:, :-1:snap_sample_factor]
             snaps = mu_snaps[:, 1::snap_sample_factor]
             n_snaps = snaps.shape[1]
-            
-
-            '''
-            snap_sample_factor_1 = 10
-            snap_sample_factor_2 = 10
-            mu_snaps = load_or_compute_snaps(mu, grid_x, grid_y, w0, dt, num_steps, snap_folder=snap_folder)
-            # Select every 10 snapshots from the start to index 400
-            prev_snaps_part1 = mu_snaps[:, :470:snap_sample_factor_1]
-            snaps_part1 = mu_snaps[:, 1:470:snap_sample_factor_1]
-            
-            # Select every 2 snapshots from index 400 to the end
-            prev_snaps_part2 = mu_snaps[:, 470:-1:snap_sample_factor_2]
-            snaps_part2 = mu_snaps[:, 471::snap_sample_factor_2]
-            
-            # Concatenate both parts along the snapshot axis
-            prev_snaps = np.concatenate((prev_snaps_part1, prev_snaps_part2), axis=1)
-            snaps = np.concatenate((snaps_part1, snaps_part2), axis=1)
-            
-            n_snaps = snaps.shape[1]
-            '''
 
             print('Generating training block for mu = {}'.format(mu))
             
@@ -133,19 +113,26 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
         bc_w = 10
 
         t1 = time.time()
-        C = np.ascontiguousarray(C, dtype=np.float64)
-        b = np.ascontiguousarray(C.sum(axis=1), dtype=np.float64)
-        weights, _ = nnls(C, b, maxiter=99999999)
-        print('nnls solve time: {}'.format(time.time() - t1))
+
+        #Splitting up C
+        combined_weights = []
+        res = Parallel(n_jobs=-1, verbose=10)(delayed(nnls)(c, c.sum(axis=1), maxiter=9999999999) for c in np.array_split(C,12,axis=1))
+        for wi in res:
+            combined_weights += [wi[0]]
+        weights = np.hstack(combined_weights)
 
         print('nnls solver residual: {}'.format(
-            np.linalg.norm(C @ weights - b) / np.linalg.norm(b)))
-
-        weights = weights.reshape((num_cells_y - 2 * nn_y, num_cells_x - 2 * nn_x))
+            np.linalg.norm(C @ weights - C.sum(axis=1)) / np.linalg.norm(
+                - C.sum(axis=1))))
+        
+        print('nnls solve time: {}'.format(time.time() - t1))
+        
+        weights = weights.reshape((num_cells_y - 2 * nn_y, num_cells_x - (nn_x + nn_x)))
         full_weights = bc_w * np.ones((num_cells_y, num_cells_x))
+        #full_weights = np.ones((num_cells_y, num_cells_x)) * weights.sum() / 100
         full_weights[idxs > 0] = weights.ravel()
         weights = full_weights.ravel()
-        np.save('ecsw_weights_rbf', weights)
+        np.save('ecsw_weights_rbf_domain_decomposition', weights)
         '''
         plt.clf()
         plt.rc('font', size=16)
@@ -158,7 +145,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
         plt.show()
         '''
     else:
-        weights = np.load('ecsw_weights_rnm_working.npy')
+        weights = np.load('ecsw_weights_rbf_domain_decomposition.npy')
     print('N_e = {}'.format(np.sum(weights > 0)))
     # END ECSW
 
@@ -181,25 +168,25 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
         pod_rbf_hprom_snaps[:, i] = decode_rbf(q_p_snapshot, epsilon, neighbors, kdtree, q_p_train, q_s_train, U_p, U_s, scaler, kernel_type="gaussian")
 
     # Calculate relative error
-    relative_error = 100 * np.linalg.norm(hdm_snaps[:,:] - pod_rbf_hprom_snaps[:,:]) / np.linalg.norm(hdm_snaps[:,:])
+    relative_error = 100 * np.linalg.norm(hdm_snaps - pod_rbf_hprom_snaps) / np.linalg.norm(hdm_snaps)
     print(f'Relative error: {relative_error:.2f}%')
 
     # Save the snapshot to a file
-    np.save(f'pod_rbf_hprom_snaps_mu1_{mu_rom[0]:.2f}_mu2_{mu_rom[1]:.3f}.npy', pod_rbf_hprom_snaps)
+    np.save(f'dd_pod_rbf_hprom_snaps_mu1_{mu_rom[0]:.2f}_mu2_{mu_rom[1]:.3f}.npy', pod_rbf_hprom_snaps)
     print(f'Snapshot saved as pod_rbf_hprom_snaps_mu1_{mu_rom[0]:.2f}_mu2_{mu_rom[1]:.3f}.npy')
 
     # Optionally plot and compare snapshots
     '''
     inds_to_plot = range(0, num_steps + 1, 100)
-    snaps_to_plot = [hdm_snaps, pod_rbf_hprom_snaps]
+    snaps_to_plot = [hdm_snaps, pod_rbf_prom_snaps]
     labels = ['HDM', 'POD-RBF']
     colors = ['black', 'green']
-    linewidths = [2, 2]
+    linewidths = [2, 1]
     fig, ax1, ax2 = compare_snaps(grid_x, grid_y, snaps_to_plot, inds_to_plot, labels, colors, linewidths)
 
     ax1.legend(), ax2.legend()
     plt.tight_layout()
-    save_path = f'hprom_pod-rbf_{mu_rom[0]:.2f}_{mu_rom[1]:.3f}.png'
+    save_path = f'dd_pod-rbf_{mu_rom[0]:.2f}_{mu_rom[1]:.3f}.png'
     print(f'Saving as "{save_path}"')
     plt.savefig(save_path, dpi=300)
     plt.show()
@@ -212,4 +199,4 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
     return elapsed_time, relative_error
 
 if __name__ == "__main__":
-    main(mu1=5.19, mu2= 0.026, compute_ecsw=False)
+    main(mu1=4.75, mu2= 0.02, compute_ecsw=False)

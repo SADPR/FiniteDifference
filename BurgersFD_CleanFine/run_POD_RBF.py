@@ -16,8 +16,8 @@ from hypernet2D import load_or_compute_snaps, make_2D_grid, plot_snaps, inviscid
 # Parameters from previous setup
 DT = 0.05
 NUM_STEPS = 500
-NUM_CELLS_X = 250
-NUM_CELLS_Y = 250
+NUM_CELLS_X = 750
+NUM_CELLS_Y = 750
 XL, XU = 0, 100
 YL, YU = 0, 100
 
@@ -30,7 +30,7 @@ def compare_snaps(snaps_to_plot, inds_to_plot, labels, colors, linewidths):
                color=colors[i],
                linewidth=linewidths[i])
 
-def main(mu1=5.19, mu2=0.026):
+def main(mu1=4.75, mu2=0.02):
     # Define the grid and initial conditions
     grid_x, grid_y = make_2D_grid(XL, XU, YL, YU, NUM_CELLS_X, NUM_CELLS_Y)
     w0 = np.ones((NUM_CELLS_X * NUM_CELLS_Y * 2,))  # Example initial condition
@@ -58,11 +58,11 @@ def main(mu1=5.19, mu2=0.026):
 
     # Set epsilon and neighbors based on the value of mu1
     if mu1 == 4.75:
-        epsilon = 0.01
-        neighbors = 20
+        epsilon = 2
+        neighbors = 5
     elif mu1 == 4.56:
-        epsilon = 0.01
-        neighbors = 20
+        epsilon = 1
+        neighbors = 5
     elif mu1 == 5.19:
         epsilon = 0.01
         neighbors = 20
@@ -97,12 +97,11 @@ def main(mu1=5.19, mu2=0.026):
     #print(f'Snapshot saved as pod_rbf_prom_snaps_mu1_{mu[0]:.2f}_mu2_{mu[1]:.3f}.npy')
 
     # Plot and compare snapshots (currently commented out)
-    '''
     inds_to_plot = range(0, NUM_STEPS + 1, 100)
     snaps_to_plot = [hdm_snaps, pod_rbf_prom_snaps]
     labels = ['HDM', 'POD-RBF']
     colors = ['black', 'green']
-    linewidths = [2, 1]
+    linewidths = [2, 2]
     compare_snaps(snaps_to_plot, inds_to_plot, labels, colors, linewidths)
 
     # Save plot and results
@@ -111,7 +110,6 @@ def main(mu1=5.19, mu2=0.026):
     plt.legend(loc=2)
     plt.savefig(f'plot_mu1_{mu[0]:.2f}_mu2_{mu[1]:.3f}.png', dpi=300)
     plt.show()
-    '''
     
     
 

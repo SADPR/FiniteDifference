@@ -9,6 +9,7 @@ import time
 from scipy.optimize import nnls
 from scipy.optimize import lsq_linear
 from sklearn.linear_model import LinearRegression
+from joblib import Parallel, delayed
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -92,9 +93,9 @@ def get_snapshot_params():
       mu_samples += [[mu1, mu2]]
   return mu_samples
 
-def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
+def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
 
-    model_path = 'autoenc_working.pt'
+    model_path = 'autoenc.pt'
     snap_folder = 'param_snaps'
 
     # Query point of HPROM-ANN
@@ -153,47 +154,104 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
         C = np.vstack(Clist)
         idxs = np.zeros((num_cells_y, num_cells_x))
 
-        # Select boundaries
+        # Select interior nodes (excluding boundaries)
         nn_x = 1
         nn_y = 1
         idxs[nn_y:-nn_y, nn_x:-nn_x] = 1
-        C = C[:, (idxs == 1).ravel()]
 
         # Weighting for boundary
         bc_w = 10
+        
+        C_cor = bc_w * C[:, (idxs == 0).ravel()]
+        C_interior = C[:, (idxs == 1).ravel()]
+
+        # Adjust the right-hand side vector
+        b_cor = C_cor.sum(axis=1)
 
         t1 = time.time()
-        #weights, _, _ = lsqnonneg(C, C.sum(axis=1))
-        #weights, _ = nnls(C, C.sum(axis=1), maxiter=99999999)
-        # Using scikit-learn's LinearRegression with positive constraint
-        reg_nnls = LinearRegression(positive=True)
-        reg_nnls.fit(C, C.sum(axis=1))  # Directly passing the target as C.sum(axis=1)
 
-        # Retrieve the weights
-        weights = reg_nnls.coef_.flatten()  # Flatten to match the shape as with `nnls`
+        # Multilevel NNLS approach with 2 levels
+        num_subdomains = 24  # Number of subdomains at level 1
+        C_subdomains = np.array_split(C_interior, num_subdomains, axis=1)
+
+        # Prepare start indices for subdomains
+        start_indices = np.cumsum([0] + [C_j.shape[1] for C_j in C_subdomains[:-1]])
+
+        # Level 1: Solve NNLS subproblems independently in parallel
+        def solve_nnls_subproblem(C_i, start_idx):
+            b_i = C_i.sum(axis=1)  # Right-hand side vector for subdomain
+            w_i, res_i = nnls(C_i, b_i)
+            # Store only the non-zero weights
+            non_zero_indices = np.nonzero(w_i)[0]
+            w_i_nz = w_i[non_zero_indices]
+            # Map indices to global indices
+            indices_i = np.arange(start_idx, start_idx + C_i.shape[1])
+            indices_i_nz = indices_i[non_zero_indices]
+            print(f'Subdomain starting at index {start_idx}, size of reduced mesh: {non_zero_indices.shape[0]}')
+            return w_i_nz, indices_i_nz
+
+        results = Parallel(n_jobs=-1, verbose=10)(delayed(solve_nnls_subproblem)(C_i, start_idx)
+                                                  for C_i, start_idx in zip(C_subdomains, start_indices))
+
+        subdomain_weights = [res[0] for res in results]
+        subdomain_indices = [res[1] for res in results]
+
+        # Level 2: Combine the non-zero columns from Level 1
+        # Collect all non-zero weights and their indices
+        all_non_zero_indices = np.concatenate(subdomain_indices)
+        all_non_zero_weights = np.concatenate(subdomain_weights)
+        # Extract the corresponding columns from the original C_interior matrix
+        C_level2 = C_interior[:, all_non_zero_indices]
+        # Build z_level2 (weights from Level 1)
+        z_level2 = all_non_zero_weights
+        # Compute b_level2 by multiplying C_level2 with z_level2
+        b_level2 = C_level2 @ z_level2
+
+        # Solve NNLS at Level 2
+        print("Solving NNLS at Level 2")
+        print(C_level2.shape)
+        w_level2, res_level2 = nnls(C_level2, b_level2, atol=1e-8)
+        # This will run the same function nnls(C_level2, b_level2) multiple times in parallel.
+
+        # Map weights back to global indices (relative to C_interior)
+        weights_interior = np.zeros(C_interior.shape[1])
+        weights_interior[all_non_zero_indices] = w_level2
+
+        # Handle boundary weights
+        weights_boundary, res_boundary = nnls(C_cor, b_cor)
         print('nnls solve time: {}'.format(time.time() - t1))
+        print('Level 2 nnls residual: {}'.format(res_level2))
+        print('nnz(weights_interior): {}'.format(np.sum(weights_interior > 0)))
+        print('nnz(weights_boundary): {}'.format(np.sum(weights_boundary > 0)))
 
+        # Assemble full weights vector
+        weights_full = np.zeros(C.shape[1])
+        # Map weights_interior back to full domain indices
+        interior_indices = np.where(idxs.ravel() == 1)[0]
+        weights_full[interior_indices] = weights_interior
+        # Assign boundary weights
+        boundary_indices = np.where(idxs.ravel() == 0)[0]
+        weights_full[boundary_indices] = weights_boundary
         print('nnls solver residual: {}'.format(
-          np.linalg.norm(C @ weights - C.sum(axis=1)) / np.linalg.norm(C.sum(axis=1))))
+            np.linalg.norm(C @ weights_full - C.sum(axis=1)) / np.linalg.norm(
+                - C.sum(axis=1))))
 
-        weights = weights.reshape((num_cells_y - 2*nn_y, num_cells_x - 2*nn_x))
-        full_weights = bc_w*np.ones((num_cells_y, num_cells_x))
-        full_weights[idxs > 0] = weights.ravel()
-        weights = full_weights.ravel()
-        np.save('ecsw_weights_rnm', weights)
-        '''
+        # Reshape weights
+        weights = weights_full
+        np.save('ecsw_weights_rnm_multilevel', weights)
         plt.clf()
+        plt.rcParams.update({
+            "text.usetex": True,
+            "mathtext.fontset": "stix",
+            "font.family": ["STIXGeneral"]})
         plt.rc('font', size=16)
-        plt.spy(weights.reshape((250, 250)))
+        plt.spy(weights)
         plt.xlabel('$x$ cell index')
         plt.ylabel('$y$ cell index')
-        plt.title('PROM-NN Reduced Mesh')
         plt.tight_layout()
-        plt.savefig('prom-nn-reduced-mesh.png', dpi=300)
-        plt.show()
-        '''
+        plt.savefig('ecsw_weights_rnm_multilevel.png', dpi=300)
     else:
-        weights = np.load('ecsw_weights_rnm_working.npy')
+        weights = np.load('ecsw_weights_rnm_multilevel.npy')
     print('N_e = {}'.format(np.sum(weights > 0)))
     #END ECSW
 
@@ -209,10 +267,10 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
     def decode(x, with_grad=True):
         if with_grad:
-            return basis @ x + basis2 @ rnm(torch.cat((x, tmu)))#rnm(x) 
+            return basis @ x + basis2 @ rnm(torch.cat((x, tmu)))
         else:
             with torch.no_grad():
-                return basis @ x + basis2 @ rnm(torch.cat((x, tmu)))#rnm(x)
+                return basis @ x + basis2 @ rnm(torch.cat((x, tmu)))
 
     # Compute the ROM snapshots using the decode function
     man_snaps = np.array([decode(torch.tensor(ys[:, i].copy(), dtype=torch.float), False).numpy() for i in range(ys.shape[1])]).T
@@ -221,7 +279,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
     hdm_snaps = load_or_compute_snaps(mu_rom, grid_x, grid_y, w0, dt, num_steps, snap_folder=snap_folder)
 
     # Commented section for visualization (plotting)
-    '''
+    
     inds_to_plot = range(0, 501, 100)
     snaps_to_plot = [hdm_snaps, man_snaps]
     labels = ['HDM', 'HPROM-ANN']
@@ -231,17 +289,17 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
     ax1.legend(), ax2.legend()
     plt.tight_layout()
-    save_path = f'hprom-ann_{mu_rom[0]:.2f}_{mu_rom[1]:.3f}_n{sizes[0]}_nbar{sizes[1]-sizes[0]}.png'
+    save_path = f'dd_multilevel_hprom-ann_{mu_rom[0]:.2f}_{mu_rom[1]:.3f}_n{sizes[0]}_nbar{sizes[1]-sizes[0]}.png'
     print(f'Saving as "{save_path}"')
     plt.savefig(save_path, dpi=300)
     plt.show()
-    '''
+    
 
     # Print timings for the steps
     print(f'rnm_its: {man_its:.2f}, rnm_jac: {man_jac:.2f}, rnm_res: {man_res:.2f}, rnm_ls: {man_ls:.2f}')
 
     # Save the HRNM snapshot to a file
-    np.save(f'hrnm_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy', man_snaps)
+    np.save(f'dd_multilevel_hrnm_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy', man_snaps)
     print(f'Snapshot saved as hrnm_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy')
 
     # Compute and print the relative error
@@ -252,4 +310,4 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
     return elapsed_time, relative_error
 
 if __name__ == "__main__":
-    main(compute_ecsw=False)
+    main(compute_ecsw=True)

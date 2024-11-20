@@ -14,9 +14,9 @@ SEED = 1234557
 ## PROBLEM-WIDE CONSTANTS
 #   These define the underlying hdm, so set them once and use the same values for all ROM
 #   and neural network runs
-DT = 0.07
+DT = 0.05
 NUM_STEPS = 500
-NUM_CELLS = 250
+NUM_CELLS = 750
 XL, XU = 0, 100
 U0 = np.ones((NUM_CELLS, NUM_CELLS))
 V0 = U0.copy()

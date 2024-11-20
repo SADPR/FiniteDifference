@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 from hypernet2D import compute_ECSW_training_matrix_2D, make_2D_grid, plot_snaps, \
     load_or_compute_snaps, inviscid_burgers_implicit2D_LSPG, POD, inviscid_burgers_res2D, \
     inviscid_burgers_exact_jac2D, inviscid_burgers_ecsw_fixed
+from lsqnonneg import lsqnonneg
+from joblib import Parallel, delayed
 
 plt.rcParams.update({
     "text.usetex": True,
@@ -21,14 +23,14 @@ plt.rcParams.update({
     "font.family": ["STIXGeneral"]})
 plt.rc('font', size=13)
 
-def main(mu1= 4.74, mu2=0.02, compute_ecsw = False):
+def main(mu1= 4.74, mu2=0.02, compute_ecsw = True):
 
     snap_folder = 'param_snaps'
     num_vecs = 95
 
     dt = 0.05
     num_steps = 500
-    num_cells_x, num_cells_y = 750, 750
+    num_cells_x, num_cells_y = 250, 250
     xl, xu, yl, yu = 0, 100, 0, 100
     grid_x, grid_y = make_2D_grid(xl, xu, yl, yu, num_cells_x, num_cells_y)
     u0 = np.ones((num_cells_y, num_cells_x))
@@ -73,12 +75,19 @@ def main(mu1= 4.74, mu2=0.02, compute_ecsw = False):
 
         # Larger weighting for boundary terms due to the Dirichlet boundary condition
         bc_w = 10
+        C_cor = bc_w * C[:, (idxs == 0).ravel()]
         C = C[:, (idxs == 1).ravel()]
 
         t1 = time.time()
         C = np.ascontiguousarray(C, dtype=np.float64)
-        b = np.ascontiguousarray(C.sum(axis=1), dtype=np.float64)
-        weights, _ = nnls(C, b, maxiter=99999999)
+        combined_weights = []
+        num_subdomains = 24
+        res = Parallel(n_jobs=-1, verbose=10)(delayed(nnls)(c, c.sum(axis=1), maxiter=9999999999) for c in np.array_split(C,num_subdomains,axis=1))
+        for wi in res:
+            combined_weights += [wi[0]]
+        weights = np.hstack(combined_weights)
+
+        #weights_boundary, res_boundary = nnls(C_cor, C_cor.sum(axis=1), maxiter=9999999999)
         print('nnls solve time: {}'.format(time.time() - t1))
 
         print('nnls solver residual: {}'.format(
@@ -87,10 +96,10 @@ def main(mu1= 4.74, mu2=0.02, compute_ecsw = False):
 
         weights = weights.reshape((num_cells_y - 2 * nn_y, num_cells_x - (nn_xl + nn_xr)))
         full_weights = bc_w * np.ones((num_cells_y, num_cells_x))
+        #full_weights = np.ones((num_cells_y, num_cells_x)) * weights.sum() / 100
         full_weights[idxs > 0] = weights.ravel()
-        # weights = np.concatenate((np.ones((num_cells_y, nn)), weights), axis=1)
         weights = full_weights.ravel()
-        np.save('ecsw_weights_lspg', weights)
+        np.save('ecsw_weights_lspg_domain_decomposition', weights)
         plt.rcParams.update({
           "text.usetex": True,
           "mathtext.fontset": "stix",
@@ -101,9 +110,9 @@ def main(mu1= 4.74, mu2=0.02, compute_ecsw = False):
         plt.ylabel('$y$ cell index')
         plt.title('PROM Reduced Mesh')
         plt.tight_layout()
-        plt.savefig('prom-reduced-mesh.png', dpi=300)   
+        plt.savefig(f'joshua_prom-reduced-mesh_{num_subdomains}.png', dpi=300)   
     else:
-        weights = np.load('ecsw_weights_lspg_working.npy')
+        weights = np.load('ecsw_weights_lspg_domain_decomposition.npy')
     print('N_e = {}'.format(np.sum(weights > 0)))
 
     # Time-stepping to compute the HPROM at the out-of-sample parameter point
@@ -120,7 +129,7 @@ def main(mu1= 4.74, mu2=0.02, compute_ecsw = False):
     rom_snaps = basis_trunc @ rom_y
 
     # Save the HPROM snapshots
-    np.save(f'hprom_snaps_mu1_{mu_rom[0]:.2f}_mu2_{mu_rom[1]:.3f}.npy', rom_snaps)
+    np.save(f'dd_hprom_snaps_mu1_{mu_rom[0]:.2f}_mu2_{mu_rom[1]:.3f}.npy', rom_snaps)
     print(f'Snapshot saved as hprom_snaps_mu1_{mu_rom[0]:.2f}_mu2_{mu_rom[1]:.3f}.npy')
 
     # Commented section for visualization (plotting)
@@ -132,7 +141,7 @@ def main(mu1= 4.74, mu2=0.02, compute_ecsw = False):
     # Add legends and save the plot
     ax1.legend(), ax2.legend()
     plt.tight_layout()
-    plt.savefig('hprom_mu_{:1.2e}_{:1.2e}.png'.format(mu_rom[0], mu_rom[1]), dpi=300)
+    plt.savefig('dd_hprom_mu_{:1.2e}_{:1.2e}.png'.format(mu_rom[0], mu_rom[1]), dpi=300)
     '''
 
     # Compute and print the relative error

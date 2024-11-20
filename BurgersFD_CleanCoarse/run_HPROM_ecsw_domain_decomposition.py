@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from hypernet2D import compute_ECSW_training_matrix_2D, make_2D_grid, plot_snaps, \
     load_or_compute_snaps, inviscid_burgers_implicit2D_LSPG, POD, inviscid_burgers_res2D, \
     inviscid_burgers_exact_jac2D, inviscid_burgers_ecsw_fixed
+from lsqnonneg import lsqnonneg
 
 plt.rcParams.update({
     "text.usetex": True,
@@ -21,14 +22,14 @@ plt.rcParams.update({
     "font.family": ["STIXGeneral"]})
 plt.rc('font', size=13)
 
-def main(mu1= 4.74, mu2=0.02, compute_ecsw = False):
+def main(mu1= 4.74, mu2=0.02, compute_ecsw = True):
 
     snap_folder = 'param_snaps'
     num_vecs = 95
 
     dt = 0.05
     num_steps = 500
-    num_cells_x, num_cells_y = 750, 750
+    num_cells_x, num_cells_y = 250, 250
     xl, xu, yl, yu = 0, 100, 0, 100
     grid_x, grid_y = make_2D_grid(xl, xu, yl, yu, num_cells_x, num_cells_y)
     u0 = np.ones((num_cells_y, num_cells_x))
@@ -103,7 +104,7 @@ def main(mu1= 4.74, mu2=0.02, compute_ecsw = False):
         plt.tight_layout()
         plt.savefig('prom-reduced-mesh.png', dpi=300)   
     else:
-        weights = np.load('ecsw_weights_lspg_working.npy')
+        weights = np.load('ecsw_weights_lspg.npy')
     print('N_e = {}'.format(np.sum(weights > 0)))
 
     # Time-stepping to compute the HPROM at the out-of-sample parameter point
