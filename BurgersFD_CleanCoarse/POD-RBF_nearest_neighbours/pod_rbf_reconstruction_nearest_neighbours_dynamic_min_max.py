@@ -15,7 +15,8 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 # Now, import the required functions from hypernet2D
-from hypernet2D import load_or_compute_snaps, make_2D_grid, plot_snaps
+from hypernet2D import load_or_compute_snaps, plot_snaps
+from config import DT, NUM_STEPS, GRID_X, GRID_Y, W0
 
 # Function to compute the Gaussian RBF kernel
 def gaussian_rbf(r, epsilon):
@@ -187,14 +188,9 @@ if __name__ == '__main__':
     target_mu = [5.19, 0.026]  # Example: mu1=5.19, mu2=0.026
 
     # Define simulation parameters
-    dt = 0.05
-    num_steps = 500
-    num_cells_x, num_cells_y = 250, 250
-    xl, xu, yl, yu = 0, 100, 0, 100
-    grid_x, grid_y = make_2D_grid(xl, xu, yl, yu, num_cells_x, num_cells_y)
-
-    # Initial condition (replace with actual initial condition as needed)
-    w0 = np.ones((num_cells_x * num_cells_y * 2,))  # Example initial condition
+    # Use grid and initial conditions directly from config
+    grid_x, grid_y = GRID_X, GRID_Y
+    w0 = W0
 
     # Define the folder where snapshots are stored
     snap_folder = "../param_snaps"
@@ -208,7 +204,7 @@ if __name__ == '__main__':
 
     # Load the specific snapshot for the target parameter pair
     try:
-        hdm_snap = load_or_compute_snaps(target_mu, grid_x, grid_y, w0, dt, num_steps, snap_folder=snap_folder)
+        hdm_snap = load_or_compute_snaps(target_mu, grid_x, grid_y, w0, DT, NUM_STEPS, snap_folder=snap_folder)
         print(f"Loaded HDM snapshot for mu1={target_mu[0]}, mu2={target_mu[1]}")
     except FileNotFoundError as e:
         print(e)
@@ -216,20 +212,20 @@ if __name__ == '__main__':
 
     # Load the saved KDTree and training data (q_p and q_s)
     try:
-        with open('modes/training_data.pkl', 'rb') as f:
+        with open('pod_rbf_nearest_model/training_data.pkl', 'rb') as f:
             data = pickle.load(f)
             kdtree = data['KDTree']
             q_p_train = data['q_p']
             q_s_train = data['q_s']
         print("Loaded training data and KDTree successfully.")
     except FileNotFoundError:
-        print("Training data file 'modes/training_data.pkl' not found.")
+        print("Training data file 'pod_rbf_nearest_model/training_data.pkl' not found.")
         exit(1)
 
     # Load U_p, U_s, and the full U matrix
     try:
-        U_p = np.load('modes/U_p.npy')
-        U_s = np.load('modes/U_s.npy')
+        U_p = np.load('pod_rbf_nearest_model/U_p.npy')
+        U_s = np.load('pod_rbf_nearest_model/U_s.npy')
         U_full = np.hstack((U_p, U_s))  # Full U matrix with 150 modes
         print("Loaded POD basis matrices (U_p and U_s) successfully.")
     except FileNotFoundError as e:
@@ -238,12 +234,13 @@ if __name__ == '__main__':
 
     # Load the saved scaler (Min-Max scaler)
     try:
-        with open('modes/scaler.pkl', 'rb') as f:
+        with open('pod_rbf_nearest_model/scaler.pkl', 'rb') as f:
             scaler = pickle.load(f)
         print("Loaded Min-Max scaler successfully.")
     except FileNotFoundError:
-        print("Scaler file 'modes/scaler.pkl' not found.")
+        print("Scaler file 'pod_rbf_nearest_model/scaler.pkl' not found.")
         exit(1)
+
 
     epsilon = 0.01
     neighbors = 20
@@ -290,7 +287,7 @@ if __name__ == '__main__':
         print(f"Standard POD Reconstruction error: {pod_error:.6e}")
 
     # Define indices to plot (e.g., specific time steps or spatial indices)
-    inds_to_plot = range(0, num_steps + 1, 100)  # Example: every 100 time steps
+    inds_to_plot = range(0, NUM_STEPS + 1, 100)  # Example: every 100 time steps
 
     # Prepare snapshots to plot
     snaps_to_plot = [hdm_snap, pod_rbf_reconstructed]

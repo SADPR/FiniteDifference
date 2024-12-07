@@ -258,28 +258,29 @@ def main():
     print("Normalization complete.")
 
     # Save the scaler for future use
-    modes_dir = "modes"
-    if not os.path.exists(modes_dir):
-        os.makedirs(modes_dir)
-        print(f"Created modes directory: {modes_dir}")
+    model_dir = "pod_rbf_nearest_model"
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
+        print(f"Created modes directory: {model_dir}")
 
-    with open(os.path.join(modes_dir, 'scaler.pkl'), 'wb') as f:
+    with open(os.path.join(model_dir, 'scaler.pkl'), 'wb') as f:
         pickle.dump(scaler, f)
     print("Scaler saved successfully.")
 
     # Save the normalized q_p and q_s for future use
-    np.save(os.path.join(modes_dir, 'U_p.npy'), basis[:, :primary_modes])
-    np.save(os.path.join(modes_dir, 'U_s.npy'), basis[:, primary_modes:total_modes])
-    np.save(os.path.join(modes_dir, 'q.npy'), q)
-    np.save(os.path.join(modes_dir, 'q_p_normalized.npy'), q_p_normalized)
-    np.save(os.path.join(modes_dir, 'q_s.npy'), q_s)
+    np.save(os.path.join(model_dir, 'U_p.npy'), basis[:, :primary_modes])
+    np.save(os.path.join(model_dir, 'U_s.npy'), basis[:, primary_modes:total_modes])
+    np.save(os.path.join(model_dir, 'q.npy'), q)
+    np.save(os.path.join(model_dir, 'q_p_normalized.npy'), q_p_normalized)
+    np.save(os.path.join(model_dir, 'q_s.npy'), q_s)
     print("Primary and secondary modes, as well as projected data (q, q_p_normalized, q_s), saved successfully.")
 
     # Build KDTree and save training data using normalized q_p
-    training_data_filename = os.path.join(modes_dir, 'training_data.pkl')
+    training_data_filename = os.path.join(model_dir, 'training_data.pkl')
     build_kdtree_and_save_data(q_p_normalized, q_s, training_data_filename)
 
     print("Processing complete.")
+
 
 if __name__ == '__main__':
     main()

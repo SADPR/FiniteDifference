@@ -6,7 +6,6 @@ point
 import os
 import time
 
-from lsqnonneg import lsqnonneg
 from scipy.optimize import nnls
 from scipy.optimize import lsq_linear
 from sklearn.linear_model import LinearRegression
@@ -94,7 +93,7 @@ def get_snapshot_params():
       mu_samples += [[mu1, mu2]]
   return mu_samples
 
-def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
+def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
     model_path = 'autoenc.pt'
     snap_folder = 'param_snaps'
@@ -169,7 +168,7 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
 
         #Splitting up C
         combined_weights = []
-        res = Parallel(n_jobs=-1, verbose=10)(delayed(nnls)(c, c.sum(axis=1), maxiter=9999999999, atol=1e-4) for c in np.array_split(C,12,axis=1))
+        res = Parallel(n_jobs=4, verbose=10)(delayed(nnls)(c, c.sum(axis=1), maxiter=9999999999) for c in np.array_split(C,24,axis=1))
         for wi in res:
             combined_weights += [wi[0]]
         weights = np.hstack(combined_weights)
@@ -179,7 +178,8 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
                 - C.sum(axis=1))))
         
         print('nnls solve time: {}'.format(time.time() - t1))
-        
+
+        print(np.nonzero(weights)[0].shape)        
         weights = weights.reshape((num_cells_y - 2 * nn_y, num_cells_x - (nn_xl + nn_xr)))
         full_weights = bc_w * np.ones((num_cells_y, num_cells_x))
         #full_weights = np.ones((num_cells_y, num_cells_x)) * weights.sum() / 100
@@ -199,7 +199,7 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
         plt.tight_layout()
         plt.savefig('prom-reduced-mesh.png', dpi=300)
     else:
-        weights = np.load('ecsw_weights_hrnm_domain_decomposition.npy')
+        weights = np.load('ecsw_weights_rnm_ecm.npy')
     print('N_e = {}'.format(np.sum(weights > 0)))
     #END ECSW
 
@@ -215,10 +215,10 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
 
     def decode(x, with_grad=True):
         if with_grad:
-            return basis @ x + basis2 @ rnm(x)
+            return basis @ x + basis2 @ rnm(torch.cat((x, tmu)))#rnm(x)
         else:
             with torch.no_grad():
-                return basis @ x + basis2 @ rnm(x)
+                return basis @ x + basis2 @ rnm(torch.cat((x, tmu)))#rnm(x)
 
     # Compute the ROM snapshots using the decode function
     man_snaps = np.array([decode(torch.tensor(ys[:, i].copy(), dtype=torch.float), False).numpy() for i in range(ys.shape[1])]).T
@@ -227,7 +227,7 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
     hdm_snaps = load_or_compute_snaps(mu_rom, grid_x, grid_y, w0, dt, num_steps, snap_folder=snap_folder)
 
     # Commented section for visualization (plotting)
-    '''
+    
     inds_to_plot = range(0, 501, 100)
     snaps_to_plot = [hdm_snaps, man_snaps]
     labels = ['HDM', 'HPROM-ANN']
@@ -241,7 +241,8 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
     print(f'Saving as "{save_path}"')
     plt.savefig(save_path, dpi=300)
     plt.show()
-    '''
+    
+    
 
     # Print timings for the steps
     print(f'rnm_its: {man_its:.2f}, rnm_jac: {man_jac:.2f}, rnm_res: {man_res:.2f}, rnm_ls: {man_ls:.2f}')
@@ -258,4 +259,4 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
     return elapsed_time, relative_error
 
 if __name__ == "__main__":
-    main(compute_ecsw=True)
+    main(compute_ecsw=False)

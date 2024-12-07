@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 from hypernet2D import compute_ECSW_training_matrix_2D, make_2D_grid, plot_snaps, \
     load_or_compute_snaps, inviscid_burgers_implicit2D_LSPG, POD, inviscid_burgers_res2D, \
     inviscid_burgers_exact_jac2D, inviscid_burgers_ecsw_fixed
-from lsqnonneg import lsqnonneg
 from joblib import Parallel, delayed
 
 plt.rcParams.update({
@@ -23,14 +22,14 @@ plt.rcParams.update({
     "font.family": ["STIXGeneral"]})
 plt.rc('font', size=13)
 
-def main(mu1= 4.74, mu2=0.02, compute_ecsw = True):
+def main(mu1= 4.75, mu2=0.02, compute_ecsw = False):
 
     snap_folder = 'param_snaps'
     num_vecs = 95
 
     dt = 0.05
     num_steps = 500
-    num_cells_x, num_cells_y = 250, 250
+    num_cells_x, num_cells_y = 750, 750
     xl, xu, yl, yu = 0, 100, 0, 100
     grid_x, grid_y = make_2D_grid(xl, xu, yl, yu, num_cells_x, num_cells_y)
     u0 = np.ones((num_cells_y, num_cells_x))
@@ -81,8 +80,7 @@ def main(mu1= 4.74, mu2=0.02, compute_ecsw = True):
         t1 = time.time()
         C = np.ascontiguousarray(C, dtype=np.float64)
         combined_weights = []
-        num_subdomains = 24
-        res = Parallel(n_jobs=-1, verbose=10)(delayed(nnls)(c, c.sum(axis=1), maxiter=9999999999) for c in np.array_split(C,num_subdomains,axis=1))
+        res = Parallel(n_jobs=-1, verbose=10)(delayed(nnls)(c, c.sum(axis=1), maxiter=9999999999) for c in np.array_split(C,20,axis=1))
         for wi in res:
             combined_weights += [wi[0]]
         weights = np.hstack(combined_weights)
@@ -105,12 +103,12 @@ def main(mu1= 4.74, mu2=0.02, compute_ecsw = True):
           "mathtext.fontset": "stix",
           "font.family": ["STIXGeneral"]})
         plt.rc('font', size=16)
-        plt.spy(weights.reshape((250, 250)))
+        plt.spy(weights.reshape((750, 750)))
         plt.xlabel('$x$ cell index')
         plt.ylabel('$y$ cell index')
         plt.title('PROM Reduced Mesh')
         plt.tight_layout()
-        plt.savefig(f'joshua_prom-reduced-mesh_{num_subdomains}.png', dpi=300)   
+        plt.savefig('prom-reduced-mesh.png', dpi=300)   
     else:
         weights = np.load('ecsw_weights_lspg_domain_decomposition.npy')
     print('N_e = {}'.format(np.sum(weights > 0)))
@@ -153,4 +151,4 @@ def main(mu1= 4.74, mu2=0.02, compute_ecsw = True):
 
 
 if __name__ == "__main__":
-    main(mu1 = 4.75, mu2= 0.02)
+    main(mu1 = 4.75, mu2= 0.02, compute_ecsw=False)

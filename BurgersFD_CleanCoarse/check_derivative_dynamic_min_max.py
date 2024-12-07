@@ -166,7 +166,7 @@ if __name__ == '__main__':
     # Load the snapshot data and select a specific column
     snapshot_file = 'param_snaps/mu1_5.19+mu2_0.026.npy'   # Adjust the filename
     snapshot = np.load(snapshot_file)
-    snapshot_column = snapshot[:, 0]
+    snapshot_column = snapshot[:, 100]
     
     # Load U_p (primary POD basis)
     U_p = np.load('modes/U_p.npy')

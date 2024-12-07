@@ -1,30 +1,31 @@
+# compute_gp_models.py
+
 import os
 import numpy as np
 import time
 import pickle
-from sklearn.utils.extmath import randomized_svd
-from sklearn.preprocessing import MinMaxScaler
-import matplotlib.pyplot as plt
 import logging
 import sys
-from scipy.spatial.distance import cdist
+import torch
+from torch.utils.data import TensorDataset, DataLoader
+import gpytorch
+from gpytorch.models import ApproximateGP
+from gpytorch.variational import VariationalStrategy, CholeskyVariationalDistribution, IndependentMultitaskVariationalStrategy
+from gpytorch.kernels import RBFKernel, ScaleKernel
+from gpytorch.likelihoods import MultitaskGaussianLikelihood
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
-# Determine the absolute path of the parent directory
+# Ensure the parent directory is in sys.path
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-
-# Add the parent directory to sys.path if it's not already present
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
-# Now, import the required functions from hypernet2D
+# Import required functions
 from hypernet2D import load_or_compute_snaps, make_2D_grid
 
 def get_snapshot_params():
     """
     Generate a list of parameter vectors [mu1, mu2] within specified ranges.
-
-    Returns:
-    - mu_samples: List of [mu1, mu2] pairs.
     """
     MU1_RANGE = 4.25, 5.5
     MU2_RANGE = 0.015, 0.03
@@ -40,44 +41,14 @@ def get_snapshot_params():
             mu_samples.append([mu1, mu2])
     return mu_samples
 
-def param_to_snap_fn(mu, snap_folder="param_snaps", extension=".npy"):
-    """
-    Generates a filename for snapshots based on the parameter vector mu.
-
-    Parameters:
-    - mu: Parameter vector [mu1, mu2].
-    - snap_folder: Directory where snapshots are stored.
-    - extension: File extension for snapshot files.
-
-    Returns:
-    - snap_fn: Filename string for the given parameters.
-    """
-    # Ensure mu has two elements
-    assert len(mu) == 2, "Parameter vector mu must have two elements [mu1, mu2]."
-
-    # Format the filename with mu values, replacing decimal points with 'p' for filesystem compatibility
-    mu1_str = f"{mu[0]:.6f}".replace('.', 'p')
-    mu2_str = f"{mu[1]:.6f}".replace('.', 'p')
-    snap_fn = os.path.join(snap_folder, f"snap_mu1_{mu1_str}_mu2_{mu2_str}{extension}")
-    return snap_fn
-
 def perform_pod(snaps, num_modes=150, method='rsvd', random_state=None):
     """
     Perform Proper Orthogonal Decomposition (POD) using SVD or Randomized SVD.
-
-    Parameters:
-    - snaps: Snapshot matrix of shape (total_dofs, total_snapshots).
-    - num_modes: Total number of POD modes to retain.
-    - method: 'svd' for standard SVD or 'rsvd' for randomized SVD.
-    - random_state: Random state for reproducibility (only used if method='rsvd').
-
-    Returns:
-    - basis: POD basis matrix of shape (total_dofs, num_modes).
-    - sigma: Singular values array of shape (num_modes,).
     """
     if method == 'rsvd':
         print("Performing Randomized SVD for POD...")
         start_time = time.time()
+        from sklearn.utils.extmath import randomized_svd
         U, sigma, Vh = randomized_svd(snaps, n_components=num_modes, random_state=random_state)
         elapsed_time = time.time() - start_time
         print(f"Randomized SVD completed in {elapsed_time:.2f} seconds.")
@@ -124,9 +95,6 @@ def main():
     mu_samples = get_snapshot_params()
     print(f"Total parameter samples: {len(mu_samples)}")
 
-    # Compute the basis by collecting snapshots over a range of parameters
-    snap_count = len(mu_samples)  # Total number of parameter combinations
-
     # Attempt to load the shape of the first snapshot to determine snapshot dimensions
     try:
         first_snap = load_or_compute_snaps(mu_samples[0], grid_x, grid_y, w0, dt, num_steps, snap_folder=snap_folder)
@@ -135,10 +103,10 @@ def main():
     except FileNotFoundError as e:
         print(f"Error loading the first snapshot: {e}")
         print("Ensure that at least one snapshot exists to determine the snapshot dimensions.")
-        # Log the error
         logging.error(f"Error loading the first snapshot: {e}")
         return  # Exit since snapshot dimensions are unknown
 
+    snap_count = len(mu_samples)  # Total number of parameter combinations
     total_snaps = snapshot_shape[1] * snap_count  # Total number of snapshots (time steps * parameter combinations)
     print(f"Total number of snapshots to aggregate: {total_snaps}")
 
@@ -153,7 +121,6 @@ def main():
     for idx, mu in enumerate(mu_samples):
         try:
             snap_mu = load_or_compute_snaps(mu, grid_x, grid_y, w0, dt, num_steps, snap_folder=snap_folder)
-            print(snap_mu.shape)
             snaps[:, col_offset:col_offset + snap_mu.shape[1]] = snap_mu  # Insert directly
             col_offset += snap_mu.shape[1]  # Update column offset for the next parameter set
             successful_mu.append(mu)
@@ -195,7 +162,7 @@ def main():
             return
     else:
         # Define POD parameters
-        pod_method = 'rsvd'  # Choose between 'svd' (standard SVD) or 'rsvd' (randomized SVD)
+        pod_method = 'rsvd'  # Choose between 'svd' or 'rsvd'
         num_modes = 150  # Total number of POD modes to retain
         random_state = 42  # For reproducibility (only used if pod_method='rsvd')
 
@@ -211,7 +178,6 @@ def main():
     # Define how many primary modes to use
     primary_modes = 10
     total_modes = 150  # Ensure total_modes >= primary_modes
-    secondary_modes = total_modes - primary_modes
 
     # Project the snapshots onto the POD basis
     print("Projecting snapshots onto the POD basis...")
@@ -225,9 +191,9 @@ def main():
     print("Normalizing q_p data using Min-Max normalization...")
     scaler = MinMaxScaler(feature_range=(-1, 1))
     q_p_normalized = scaler.fit_transform(q_p.T).T  # Note the transpose operations
-    print("Normalization complete.")
+    print("Normalization of q_p complete.")
 
-    # Save the scaler for future use
+    # Save the scaler for q_p
     modes_dir = "modes"
     if not os.path.exists(modes_dir):
         os.makedirs(modes_dir)
@@ -237,49 +203,130 @@ def main():
         pickle.dump(scaler, f)
     print("Scaler saved successfully.")
 
+    # Scale q_s using StandardScaler and save the scaler
+    print("Scaling q_s data using StandardScaler...")
+    y_scaler = StandardScaler()
+    q_s_scaled = y_scaler.fit_transform(q_s.T).T  # Shape: (num_secondary_modes, num_samples)
+    print("Scaling of q_s complete.")
+
+    # Save the scaler for q_s
+    with open(os.path.join(modes_dir, 'y_scaler.pkl'), 'wb') as f:
+        pickle.dump(y_scaler, f)
+    print("y_scaler saved successfully.")
+
     # Save the normalized q_p and q_s for future use
     np.save(os.path.join(modes_dir, 'U_p.npy'), basis[:, :primary_modes])
     np.save(os.path.join(modes_dir, 'U_s.npy'), basis[:, primary_modes:total_modes])
     np.save(os.path.join(modes_dir, 'q.npy'), q)
     np.save(os.path.join(modes_dir, 'q_p_normalized.npy'), q_p_normalized)
-    np.save(os.path.join(modes_dir, 'q_s.npy'), q_s)
-    print("Primary and secondary modes, as well as projected data (q, q_p_normalized, q_s), saved successfully.")
+    np.save(os.path.join(modes_dir, 'q_s_scaled.npy'), q_s_scaled)
+    print("Primary and secondary modes, as well as projected data (q, q_p_normalized, q_s_scaled), saved successfully.")
 
-    # Compute the RBF kernel matrix globally and compute W
-    print("Computing the global RBF weight matrix W...")
+    # Prepare training data
+    X_train = q_p_normalized.T  # Shape: (num_samples, num_primary_modes)
+    y_train = q_s_scaled.T      # Shape: (num_samples, num_secondary_modes)
 
-    # Define RBF hyperparameters
-    epsilon = 1  # Example value, adjust as needed
+    # Convert training data to PyTorch tensors
+    X_train_tensor = torch.from_numpy(X_train).float()
+    y_train_tensor = torch.from_numpy(y_train).float()
 
-    # Compute pairwise distances between all q_p_normalized vectors
-    print("Computing pairwise distances...")
+    # Create DataLoader for batch processing
+    batch_size = 256  # Reduced batch size to save memory
+    train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
-    M = q_p_normalized.shape[1]  # Total number of data points
-    pairwise_distances = cdist(q_p_normalized.T, q_p_normalized.T, 'euclidean')  # Shape: (M, M)
+    # Force the code to use CPU
+    device = torch.device('cpu')
+    print(f"Using device: {device}")
 
-    # Compute the RBF kernel matrix Psi
-    print("Computing the RBF kernel matrix Psi...")
-    Psi = np.exp(-epsilon * pairwise_distances**2)  # Gaussian RBF kernel
+    # Define the GP model
+    class MultitaskGPModel(ApproximateGP):
+        def __init__(self, inducing_points, num_tasks):
+            self.num_tasks = num_tasks
+            batch_shape = torch.Size([num_tasks])
 
-    # Regularization parameter for numerical stability
-    lambda_reg = 1e-6
-    Psi += lambda_reg * np.eye(M)
+            variational_distribution = CholeskyVariationalDistribution(
+                inducing_points.size(0), batch_shape=batch_shape
+            )
+            variational_strategy = VariationalStrategy(
+                self, inducing_points, variational_distribution, learn_inducing_locations=True
+            )
+            variational_strategy = IndependentMultitaskVariationalStrategy(
+                variational_strategy, num_tasks=num_tasks
+            )
 
-    # Invert the kernel matrix Psi
-    print("Inverting the RBF kernel matrix Psi...")
-    
-    Psi_inv = np.linalg.inv(Psi)
+            super(MultitaskGPModel, self).__init__(variational_strategy)
+            self.mean_module = gpytorch.means.ConstantMean(batch_shape=batch_shape)
+            self.covar_module = ScaleKernel(
+                RBFKernel(batch_shape=batch_shape), batch_shape=batch_shape
+            )
 
-    # Compute the weight matrix W
-    print("Computing the weight matrix W...")
-    W = q_s @ Psi_inv  # Shape: (n_s, M)
+        def forward(self, x):
+            # x shape: [batch_size, input_dim]
+            mean_x = self.mean_module(x)
+            covar_x = self.covar_module(x)
+            return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
-    # Save the weight matrix W and RBF hyperparameters
-    np.save(os.path.join(modes_dir, 'W.npy'), W)
-    with open(os.path.join(modes_dir, 'rbf_params.pkl'), 'wb') as f:
-        pickle.dump({'epsilon': epsilon, 'lambda_reg': lambda_reg}, f)
+    # Initialize inducing points
+    num_inducing = 100  # Adjust based on memory constraints
+    inducing_points = X_train_tensor[:num_inducing, :].to(device)
 
-    print("Weight matrix W and RBF hyperparameters saved successfully.")
+    num_tasks = y_train_tensor.shape[1]
+    print(f"Number of tasks (num_tasks): {num_tasks}")
+
+    model = MultitaskGPModel(inducing_points=inducing_points, num_tasks=num_tasks).to(device)
+    likelihood = MultitaskGaussianLikelihood(num_tasks=num_tasks).to(device)
+
+    # Set up the optimizer
+    num_epochs = 5  # Adjust based on desired training time
+    learning_rate = 0.005
+    optimizer = torch.optim.Adam([
+        {'params': model.parameters()},
+        {'params': likelihood.parameters()},
+    ], lr=learning_rate)
+
+    # Set up the loss function
+    mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=X_train_tensor.size(0))
+
+    # Training loop
+    model.train()
+    likelihood.train()
+
+    print("Starting training...")
+    training_start_time = time.time()
+    for epoch in range(num_epochs):
+        epoch_loss = 0.0
+        for X_batch, y_batch in train_loader:
+            X_batch = X_batch.to(device)
+            y_batch = y_batch.to(device)
+
+            optimizer.zero_grad()
+            output = model(X_batch)
+
+            print(f"output.mean.shape: {output.mean.shape}")  # Should be [num_tasks, batch_size]
+            print(f"output.covariance_matrix.shape: {output.covariance_matrix.shape}")
+            print(f"y_batch.shape: {y_batch.shape}")  # Should be [batch_size, num_tasks]
+
+            # Transpose y_batch to match output.mean
+            y_batch_t = y_batch.transpose(0, 1)  # Shape: [num_tasks, batch_size]
+
+            loss = -mll(output, y_batch_t)
+            loss.backward()
+            optimizer.step()
+            epoch_loss += loss.item()
+        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss:.4f}")
+    print(f"Training completed in {time.time() - training_start_time:.2f} seconds.")
+
+    # Save the trained model
+    model_filename = os.path.join(modes_dir, 'gpytorch_model_state.pth')
+    torch.save({
+        'model_state_dict': model.state_dict(),
+        'likelihood_state_dict': likelihood.state_dict(),
+        'scaler': scaler,
+        'y_scaler': y_scaler,
+        'device': device.type,
+    }, model_filename)
+    print(f"Model saved successfully in {model_filename}.")
 
     print("Processing complete.")
 
