@@ -88,19 +88,45 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
 
             print(f'Generating training block for mu = {mu}')
             Ci = compute_ECSW_training_matrix_2D_rbf_global(
-                snaps, prev_snaps, U_p, U_s, W_global, q_p_train, q_s_train, epsilon, scaler,
-                inviscid_burgers_res2D, inviscid_burgers_exact_jac2D, GRID_X, GRID_Y, DT, mu, kernel_type=kernel_name
+                snaps, prev_snaps, U_p, U_s, W_global, q_p_train, q_s_train, inviscid_burgers_res2D, inviscid_burgers_exact_jac2D, 
+                GRID_X, GRID_Y, DT, mu, scaler, epsilon, kernel_type=kernel_name
             )
             Clist.append(Ci)
 
         C = np.vstack(Clist)
 
-        # Solve for ECSW weights
+        idxs = np.zeros((NUM_CELLS, NUM_CELLS))
+
+        # Select interior nodes (excluding boundaries)
+        nn_x = 1
+        nn_y = 1
+        idxs[nn_y:-nn_y, nn_x:-nn_x] = 1
+        selected_indices = (idxs == 1).ravel()
+        C = C[:, selected_indices]
+
+        # Weighting for boundary
+        bc_w = 10
+
         t1 = time.time()
-        weights = np.hstack(Parallel(n_jobs=-1, verbose=10)(
-            delayed(nnls)(c, c.sum(axis=1)) for c in np.array_split(C, 20, axis=1)
-        ))
-        print(f'nnls solve time: {time.time() - t1}')
+
+        #Splitting up C
+        combined_weights = []
+        res = Parallel(n_jobs=-1, verbose=10)(delayed(nnls)(c, c.sum(axis=1), maxiter=9999999999) for c in np.array_split(C,10,axis=1))
+        for wi in res:
+            combined_weights += [wi[0]]
+        weights = np.hstack(combined_weights)
+
+        print('nnls solver residual: {}'.format(
+            np.linalg.norm(C @ weights - C.sum(axis=1)) / np.linalg.norm(
+                - C.sum(axis=1))))
+        
+        print('nnls solve time: {}'.format(time.time() - t1))
+        
+        weights = weights.reshape((NUM_CELLS - 2 * nn_y, NUM_CELLS - (nn_x + nn_x)))
+        full_weights = bc_w * np.ones((NUM_CELLS, NUM_CELLS))
+        #full_weights = np.ones((num_cells_y, num_cells_x)) * weights.sum() / 100
+        full_weights[idxs > 0] = weights.ravel()
+        weights = full_weights.ravel()
         np.save(os.path.join(model_dir, 'ecsw_weights_rbf_global.npy'), weights)
     else:
         weights = np.load(os.path.join(model_dir, 'ecsw_weights_rbf_global.npy'))
@@ -113,6 +139,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
         GRID_X, GRID_Y, W0, DT, NUM_STEPS, mu_rom, U_p, U_s,
         W_global, q_p_train, q_s_train, weights, epsilon, scaler, kernel_type=kernel_name
     )
+    
     elapsed_time = time.time() - t0
     print(f'Elapsed ROM time: {elapsed_time:.3e} seconds')
 
@@ -156,4 +183,4 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
 
 
 if __name__ == "__main__":
-    main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=True)
+    main(mu1=5.19, mu2=0.026, compute_ecsw=True, save_npy=False, save_plot=True)

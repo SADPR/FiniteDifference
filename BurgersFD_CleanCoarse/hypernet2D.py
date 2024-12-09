@@ -2242,7 +2242,7 @@ def compute_ECSW_training_matrix_2D_rbf_global(snaps, prev_snaps, basis, basis2,
         y0 = basis.T @ snap  # Shape: (n_pod,)
 
         # Initialize variables for Gauss-Newton iterations
-        w_recon = decode_rbf_global(y0, W_global, q_p_train, q_s_train, basis, basis2, epsilon, scaler, kernel_type)
+        w_recon = decode_rbf_global(y0, W_global, q_p_train, basis, basis2, epsilon, scaler, kernel_type)
         init_res = np.linalg.norm(w_recon - snap)
         approx_res = init_res
         num_it = 0
@@ -2252,11 +2252,11 @@ def compute_ECSW_training_matrix_2D_rbf_global(snaps, prev_snaps, basis, basis2,
         # Gauss-Newton iterations to refine q_p
         while abs(approx_res / init_res) > 1e-2 and num_it < 10:
             # Compute reconstruction and residual
-            w_recon = decode_rbf_global(y, W_global, q_p_train, q_s_train, basis, basis2, epsilon, scaler, kernel_type)
+            w_recon = decode_rbf_global(y, W_global, q_p_train, basis, basis2, epsilon, scaler, kernel_type)
             res_recon = w_recon - snap  # Residual of reconstruction
 
             # Compute Jacobian of reconstruction
-            Jf = RBFUtils.compute_rbf_jacobian_global(y, q_p_train, W_global, epsilon, scaler, kernel_type)
+            Jf = jac_rbf_global(y, W_global, q_p_train, q_s_train, basis, basis2, epsilon, scaler, kernel_type)
 
             # Solve for delta y using least squares
             JJ = Jf.T @ Jf
@@ -2265,7 +2265,7 @@ def compute_ECSW_training_matrix_2D_rbf_global(snaps, prev_snaps, basis, basis2,
             y -= dy  # Update reduced coordinates
 
             # Update residual
-            w_recon = decode_rbf_global(y, W_global, q_p_train, q_s_train, basis, basis2, epsilon, scaler, kernel_type)
+            w_recon = decode_rbf_global(y, W_global, q_p_train, basis, basis2, epsilon, scaler, kernel_type)
             approx_res = np.linalg.norm(w_recon - snap)
             num_it += 1
 
@@ -2277,7 +2277,7 @@ def compute_ECSW_training_matrix_2D_rbf_global(snaps, prev_snaps, basis, basis2,
         J = jac(w_recon, dt, JDxec, JDyec, Eye)
 
         # Compute the Jacobian of the reconstruction
-        V = RBFUtils.compute_rbf_jacobian_global(y, q_p_train, W_global, epsilon, scaler, kernel_type)
+        V = jac_rbf_global(y, W_global, q_p_train, q_s_train, basis, basis2, epsilon, scaler, kernel_type)
 
         # Compute Wi = J * V
         Wi = J @ V

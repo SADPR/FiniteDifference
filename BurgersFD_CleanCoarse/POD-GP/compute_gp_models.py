@@ -1,4 +1,4 @@
-# compute_global_weights_bayesian_optimization_with_kernels.py
+# compute_gp_models.py
 
 import os
 import numpy as np
@@ -6,12 +6,11 @@ import time
 import pickle
 import logging
 import sys
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
-from skopt import gp_minimize
-from skopt.space import Real, Categorical
-from skopt.utils import use_named_args
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF, WhiteKernel, ConstantKernel
+from sklearn.multioutput import MultiOutputRegressor
+from scipy.optimize import fmin_l_bfgs_b
 
 # Ensure the parent directory is in sys.path
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -38,30 +37,6 @@ def get_snapshot_params():
         for mu2 in mu2_samples:
             mu_samples.append([mu1, mu2])
     return mu_samples
-
-def gaussian_rbf(r, epsilon):
-    """Gaussian RBF kernel function."""
-    return np.exp(-(epsilon * r) ** 2)
-
-def inverse_multiquadric_rbf(r, epsilon):
-    """Inverse Multiquadric RBF kernel function."""
-    return 1.0 / np.sqrt(1 + (epsilon * r) ** 2)
-
-def multiquadric_rbf(r, epsilon):
-    """Multiquadric RBF kernel function."""
-    return np.sqrt(1 + (epsilon * r) ** 2)
-
-def linear_rbf(r, epsilon):
-    """Linear RBF kernel function."""
-    return r
-
-# Dictionary mapping kernel names to functions
-rbf_kernels = {
-    'gaussian': gaussian_rbf,
-    'imq': inverse_multiquadric_rbf,
-    'multiquadric': multiquadric_rbf,
-    'linear': linear_rbf
-}
 
 def perform_pod(snaps, num_modes=150, method='rsvd', random_state=None):
     """
@@ -213,126 +188,71 @@ def main():
     print("Normalizing q_p data using Min-Max normalization...")
     scaler = MinMaxScaler(feature_range=(-1, 1))
     q_p_normalized = scaler.fit_transform(q_p.T).T  # Note the transpose operations
-    print("Normalization complete.")
+    print("Normalization of q_p complete.")
 
-    # Save the scaler for future use
-    model_dir = "pod_rbf_global_model"
-    if not os.path.exists(model_dir):
-        os.makedirs(model_dir)
-        print(f"Created directory: {model_dir}")
+    # Save the scaler for q_p
+    modes_dir = "modes"
+    if not os.path.exists(modes_dir):
+        os.makedirs(modes_dir)
+        print(f"Created modes directory: {modes_dir}")
 
-    with open(os.path.join(model_dir, 'scaler.pkl'), 'wb') as f:
+    with open(os.path.join(modes_dir, 'scaler.pkl'), 'wb') as f:
         pickle.dump(scaler, f)
     print("Scaler saved successfully.")
 
+    # Normalize q_s using StandardScaler and save the scaler
+    print("Scaling q_s data using StandardScaler...")
+    y_scaler = StandardScaler()
+    q_s_scaled = y_scaler.fit_transform(q_s.T).T  # Shape: (num_secondary_modes, num_samples)
+    print("Scaling of q_s complete.")
+
+    # Save the scaler for q_s
+    with open(os.path.join(modes_dir, 'y_scaler.pkl'), 'wb') as f:
+        pickle.dump(y_scaler, f)
+    print("y_scaler saved successfully.")
+
     # Save the normalized q_p and q_s for future use
-    np.save(os.path.join(model_dir, 'U_p.npy'), basis[:, :primary_modes])
-    np.save(os.path.join(model_dir, 'U_s.npy'), basis[:, primary_modes:total_modes])
-    np.save(os.path.join(model_dir, 'q.npy'), q)
-    np.save(os.path.join(model_dir, 'q_p_normalized.npy'), q_p_normalized)
-    np.save(os.path.join(model_dir, 'q_s.npy'), q_s)
-    print("Primary and secondary modes, as well as projected data (q, q_p_normalized, q_s), saved successfully.")
+    np.save(os.path.join(modes_dir, 'U_p.npy'), basis[:, :primary_modes])
+    np.save(os.path.join(modes_dir, 'U_s.npy'), basis[:, primary_modes:total_modes])
+    np.save(os.path.join(modes_dir, 'q.npy'), q)
+    np.save(os.path.join(modes_dir, 'q_p_normalized.npy'), q_p_normalized)
+    np.save(os.path.join(modes_dir, 'q_s_scaled.npy'), q_s_scaled)
+    print("Primary and secondary modes, as well as projected data (q, q_p_normalized, q_s_scaled), saved successfully.")
 
     # Prepare training data
-    q_p_train = q_p_normalized.T  # Shape: (num_snapshots, num_primary_modes)
-    q_s_train = q_s.T  # Shape: (num_snapshots, num_secondary_modes)
+    X_train = q_p_normalized.T  # Shape: (num_samples, num_primary_modes)
+    Y_train = q_s_scaled.T      # Shape: (num_samples, num_secondary_modes)
 
-    # Split data into training and validation sets
-    X_train, X_val, y_train, y_val = train_test_split(
-        q_p_train, q_s_train, test_size=0.2, random_state=42
+    # Define the kernel with a single lengthscale
+    kernel = ConstantKernel(constant_value=1.0, constant_value_bounds='fixed') * \
+             RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e3)) + \
+             WhiteKernel(noise_level=1e-5, noise_level_bounds='fixed')
+
+    # Instantiate the base GP regressor
+    base_gp = GaussianProcessRegressor(
+        kernel=kernel,
+        n_restarts_optimizer=2,
+        optimizer='fmin_l_bfgs_b',
+        normalize_y=False
     )
 
-    # Define the search space for Bayesian optimization
-    space = [
-        Real(np.log(1e-3), np.log(1e1), name='log_epsilon'),
-        Categorical(list(rbf_kernels.keys()), name='kernel_name')
-    ]
+    # Wrap it with MultiOutputRegressor
+    multioutput_gp = MultiOutputRegressor(base_gp, n_jobs=-1)  # Use all CPUs
 
-    # Define the objective function
-    @use_named_args(space)
-    def objective(log_epsilon, kernel_name):
-        epsilon = np.exp(log_epsilon)  # Optimize in log-space to ensure positivity
-        kernel_func = rbf_kernels[kernel_name]
+    # Fit the model
+    print("Training MultiOutput Gaussian Process regressor...")
+    start_time = time.time()
+    multioutput_gp.fit(X_train, Y_train)
+    print(f"Training completed in {time.time() - start_time:.2f} seconds.")
 
-        # Compute distance matrix between training points
-        dists_train = np.linalg.norm(
-            X_train[:, np.newaxis, :] - X_train[np.newaxis, :, :], axis=2
-        )
-        # Compute kernel matrix Phi_train
-        Phi_train = kernel_func(dists_train, epsilon)
-        # Add regularization
-        Phi_train += np.eye(Phi_train.shape[0]) * 1e-8
-
-        # Solve for W
-        try:
-            W = np.linalg.solve(Phi_train, y_train)
-        except np.linalg.LinAlgError:
-            print(f"LinAlgError at epsilon={epsilon:.5e}, kernel={kernel_name}. Returning infinity.")
-            return np.inf  # Return infinity if matrix is singular
-
-        # Compute distance matrix between validation and training points
-        dists_val = np.linalg.norm(
-            X_val[:, np.newaxis, :] - X_train[np.newaxis, :, :], axis=2
-        )
-        # Compute kernel matrix Phi_val
-        Phi_val = kernel_func(dists_val, epsilon)
-
-        # Predict on validation set
-        y_val_pred = Phi_val @ W
-
-        # Compute validation error
-        error = mean_squared_error(y_val, y_val_pred)
-        print(f"Epsilon: {epsilon:.5e}, Kernel: {kernel_name}, Validation MSE: {error:.5e}")
-        return error
-
-    # Perform Bayesian optimization
-    print("Optimizing epsilon and kernel using Bayesian optimization...")
-    result = gp_minimize(
-        objective,
-        space,
-        acq_func='EI',  # Expected Improvement
-        n_calls=30,
-        random_state=42,
-        verbose=True
-    )
-    best_log_epsilon = result.x[0]
-    best_epsilon = np.exp(best_log_epsilon)
-    best_kernel_name = result.x[1]
-    print(f"Best epsilon found: {best_epsilon:.5e}")
-    print(f"Best kernel found: {best_kernel_name}")
-
-    # Compute final W using the best epsilon and kernel
-    epsilon = best_epsilon
-    kernel_func = rbf_kernels[best_kernel_name]
-
-    # Compute distance matrix between training points
-    dists_train = np.linalg.norm(
-        q_p_train[:, np.newaxis, :] - q_p_train[np.newaxis, :, :], axis=2
-    )
-    # Compute kernel matrix Phi_train
-    Phi_train = kernel_func(dists_train, epsilon)
-    # Add regularization
-    Phi_train += np.eye(Phi_train.shape[0]) * 1e-8
-
-    # Solve for W
-    U, S, Vt = np.linalg.svd(Phi_train, full_matrices=False)
-    tolerance = 1e-8  # Regularization threshold for singular values
-    S_inv = np.diag([1/s if s > tolerance else 0 for s in S])
-    W = Vt.T @ S_inv @ U.T @ q_s_train
-
-    # Save the global weight matrix and necessary data
-    training_data_filename = os.path.join(model_dir, 'global_weights.pkl')
-    with open(training_data_filename, 'wb') as f:
-        pickle.dump({
-            'W': W,                       # Global weight matrix
-            'q_p_train': q_p_train,       # Normalized primary training coordinates
-            'q_s_train': q_s_train,       # Secondary training outputs
-            'epsilon': epsilon,           # Best epsilon
-            'kernel_name': best_kernel_name  # Best kernel name
-        }, f)
-    print(f"Global weight matrix and data saved in {training_data_filename}.")
+    # Save the model using pickle
+    gp_models_filename = os.path.join(modes_dir, 'multioutput_gp_model.pkl')  # Changed extension to .pkl
+    with open(gp_models_filename, 'wb') as f:
+        pickle.dump(multioutput_gp, f)
+    print(f"GP models saved successfully in {gp_models_filename}.")
 
     print("Processing complete.")
 
 if __name__ == '__main__':
     main()
+

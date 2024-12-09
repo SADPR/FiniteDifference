@@ -102,16 +102,38 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False, save_npy=False, save_plot=False
 
         C = np.vstack(Clist)
 
+        idxs = np.zeros((NUM_CELLS, NUM_CELLS))
+
+        # Select interior nodes (excluding boundaries)
+        nn_x = 1
+        nn_y = 1
+        idxs[nn_y:-nn_y, nn_x:-nn_x] = 1
+        selected_indices = (idxs == 1).ravel()
+        C = C[:, selected_indices]
+
         # Weighting for boundary
         bc_w = 10
 
-        # Solve for ECSW weights
         t1 = time.time()
-        weights = np.hstack(Parallel(n_jobs=-1, verbose=10)(delayed(nnls)(c, c.sum(axis=1)) for c in np.array_split(C, 20, axis=1)))
-        print(f'nnls solve time: {time.time() - t1}')
 
-        weights = weights.reshape((NUM_CELLS[1], NUM_CELLS[0]))
-        weights = bc_w * np.ones((NUM_CELLS[1], NUM_CELLS[0]))  # Boundary condition weight
+        #Splitting up C
+        combined_weights = []
+        res = Parallel(n_jobs=-1, verbose=10)(delayed(nnls)(c, c.sum(axis=1), maxiter=9999999999) for c in np.array_split(C,20,axis=1))
+        for wi in res:
+            combined_weights += [wi[0]]
+        weights = np.hstack(combined_weights)
+
+        print('nnls solver residual: {}'.format(
+            np.linalg.norm(C @ weights - C.sum(axis=1)) / np.linalg.norm(
+                - C.sum(axis=1))))
+        
+        print('nnls solve time: {}'.format(time.time() - t1))
+        
+        weights = weights.reshape((NUM_CELLS - 2 * nn_y, NUM_CELLS - (nn_x + nn_x)))
+        full_weights = bc_w * np.ones((NUM_CELLS, NUM_CELLS))
+        #full_weights = np.ones((num_cells_y, num_cells_x)) * weights.sum() / 100
+        full_weights[idxs > 0] = weights.ravel()
+        weights = full_weights.ravel()
         np.save('pod_rbf_nearest_model/ecsw_weights_rbf_nearest.npy', weights)
     else:
         weights = np.load('pod_rbf_nearest_model/ecsw_weights_rbf_nearest.npy')
