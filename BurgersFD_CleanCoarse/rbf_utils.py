@@ -664,11 +664,11 @@ class RBFUtils:
             print(f"Total time: {time.time() - start_time:.6f} seconds")
 
         return q_s_pred
-
+    
     @staticmethod
     def compute_rbf_jacobian_global_gaussian(x_normalized, q_p_train_norm, W_global, epsilon, scaler, echo_level=0):
         """
-        Compute the Jacobian for the Gaussian RBF kernel using the global approach.
+        Compute the Jacobian for the Gaussian RBF kernel using a vectorized global approach.
 
         Parameters:
         - x_normalized: np.ndarray, normalized input sample (1 x dim).
@@ -686,35 +686,36 @@ class RBFUtils:
         output_dim = W_global.shape[1]
         num_train = q_p_train_norm.shape[0]
 
-        # Step 1: Compute pairwise distances and RBF values
+        # Step 1: Compute distances and RBF values
         t0 = time.time()
         dist_to_sample = np.linalg.norm(q_p_train_norm - x_normalized, axis=1)  # Shape: (num_train,)
-        rbf_values = RBFUtils.gaussian_rbf(dist_to_sample, epsilon)  # Use predefined Gaussian RBF function
+        rbf_values = RBFUtils.gaussian_rbf(dist_to_sample, epsilon)  # φ(r)
         if echo_level >= 1:
             print(f"Computed distances and RBF values in {time.time() - t0:.6f} seconds")
 
-        # Step 2: Compute the Jacobian matrix
+        # Step 2: Compute the Jacobian in a vectorized manner
         t0 = time.time()
-        jacobian_norm = np.zeros((output_dim, dim))
-        for i in range(num_train):
-            r_i = dist_to_sample[i]
-            phi_r_i = rbf_values[i]
+        # Shape notes:
+        # (q_p_train_norm - x_normalized): (num_train, dim)
+        # rbf_values[:, np.newaxis]: (num_train, 1)
+        # Dphi_Dq_p_norm: (num_train, dim)
+        Dphi_Dq_p_norm = -2 * (epsilon**2) * rbf_values[:, np.newaxis] * (x_normalized - q_p_train_norm)
 
-            if r_i > 1e-12:
-                # Gaussian RBF derivative: ∂ϕ/∂q_p = -2 * ε^2 * ϕ(r) * (q_p_sample - q_p_train)
-                dphi_dq_p_norm = -2 * epsilon**2 * phi_r_i * (x_normalized - q_p_train_norm[i])
-            else:
-                dphi_dq_p_norm = np.zeros_like(x_normalized)
-
-            jacobian_norm += np.outer(W_global[i], dphi_dq_p_norm)
+        # Now compute jacobian_norm = W_global.T @ Dphi_Dq_p_norm
+        # W_global: (num_train, output_dim)
+        # W_global.T: (output_dim, num_train)
+        # Dphi_Dq_p_norm: (num_train, dim)
+        # Result: (output_dim, dim)
+        jacobian_norm = W_global.T @ Dphi_Dq_p_norm
 
         if echo_level >= 1:
             print(f"Computed Jacobian contributions in {time.time() - t0:.6f} seconds")
 
-        # Step 3: Adjust the Jacobian for Min-Max normalization
+        # Step 3: Adjust for Min-Max normalization
         t0 = time.time()
         scale = scaler.scale_  # Shape: (dim,)
         jacobian = jacobian_norm * scale[np.newaxis, :]
+
         if echo_level >= 1:
             print(f"Adjusted Jacobian for Min-Max scaling in {time.time() - t0:.6f} seconds")
             print(f"Total time for Jacobian computation: {time.time() - start_time:.6f} seconds")
@@ -723,52 +724,31 @@ class RBFUtils:
 
     @staticmethod
     def compute_rbf_jacobian_global_multiquadric(x_normalized, q_p_train_norm, W_global, epsilon, scaler, echo_level=0):
-        """
-        Compute the Jacobian for the Multiquadric (MQ) RBF kernel using the global approach.
-
-        Parameters:
-        - x_normalized: np.ndarray, normalized input sample (1 x dim).
-        - q_p_train_norm: np.ndarray, normalized primary training coordinates (num_train x dim).
-        - W_global: np.ndarray, precomputed weights (num_train x output_dim).
-        - epsilon: float, RBF parameter.
-        - scaler: MinMaxScaler object used for normalization.
-        - echo_level: Level of verbosity for timing (default: 0).
-
-        Returns:
-        - jacobian: np.ndarray, Jacobian matrix (output_dim x dim).
-        """
         start_time = time.time()
         dim = x_normalized.shape[1]
         output_dim = W_global.shape[1]
         num_train = q_p_train_norm.shape[0]
 
-        # Step 1: Compute pairwise distances and RBF values
+        # Step 1: Compute distances and RBF values
         t0 = time.time()
-        dist_to_sample = np.linalg.norm(q_p_train_norm - x_normalized, axis=1)  # Shape: (num_train,)
-        rbf_values = RBFUtils.multiquadric_rbf(dist_to_sample, epsilon)  # Use predefined RBF function
+        dist_to_sample = np.linalg.norm(q_p_train_norm - x_normalized, axis=1)  # (num_train,)
+        rbf_values = RBFUtils.multiquadric_rbf(dist_to_sample, epsilon)  # φ(r)
         if echo_level >= 1:
             print(f"Computed distances and RBF values in {time.time() - t0:.6f} seconds")
 
-        # Step 2: Compute the Jacobian matrix
+        # Step 2: Compute derivatives in a vectorized manner
         t0 = time.time()
-        jacobian_norm = np.zeros((output_dim, dim))
-        for i in range(num_train):
-            r_i = rbf_values[i]
-            phi_r_i = r_i
+        # Dphi_Dq_p_norm: (num_train, dim)
+        Dphi_Dq_p_norm = epsilon**2 * (x_normalized - q_p_train_norm) / rbf_values[:, np.newaxis]
 
-            if phi_r_i > 1e-12:
-                dphi_dq_p_norm = epsilon**2 * (x_normalized - q_p_train_norm[i]) / phi_r_i
-            else:
-                dphi_dq_p_norm = np.zeros_like(x_normalized)
-
-            jacobian_norm += np.outer(W_global[i], dphi_dq_p_norm)
-
+        # jacobian_norm: (output_dim, dim) from W_global.T (output_dim x num_train) @ Dphi_Dq_p_norm (num_train x dim)
+        jacobian_norm = W_global.T @ Dphi_Dq_p_norm
         if echo_level >= 1:
             print(f"Computed Jacobian contributions in {time.time() - t0:.6f} seconds")
 
         # Step 3: Adjust the Jacobian for Min-Max normalization
         t0 = time.time()
-        scale = scaler.scale_  # Shape: (dim,)
+        scale = scaler.scale_  # (dim,)
         jacobian = jacobian_norm * scale[np.newaxis, :]
         if echo_level >= 1:
             print(f"Adjusted Jacobian for Min-Max scaling in {time.time() - t0:.6f} seconds")
@@ -779,7 +759,7 @@ class RBFUtils:
     @staticmethod
     def compute_rbf_jacobian_global_imq(x_normalized, q_p_train_norm, W_global, epsilon, scaler, echo_level=0):
         """
-        Compute the Jacobian for the Inverse Multiquadric (IMQ) RBF kernel using the global approach.
+        Compute the Jacobian for the Inverse Multiquadric (IMQ) RBF kernel using a vectorized global approach.
 
         Parameters:
         - x_normalized: np.ndarray, normalized input sample (1 x dim).
@@ -799,32 +779,29 @@ class RBFUtils:
 
         # Step 1: Compute pairwise distances and RBF values
         t0 = time.time()
-        dist_to_sample = np.linalg.norm(q_p_train_norm - x_normalized, axis=1)  # Shape: (num_train,)
-        rbf_values = RBFUtils.inverse_multiquadric_rbf(dist_to_sample, epsilon)  # Use predefined IMQ RBF function
+        dist_to_sample = np.linalg.norm(q_p_train_norm - x_normalized, axis=1)  # (num_train,)
+        rbf_values = RBFUtils.inverse_multiquadric_rbf(dist_to_sample, epsilon)  # φ(r)
         if echo_level >= 1:
             print(f"Computed distances and RBF values in {time.time() - t0:.6f} seconds")
 
-        # Step 2: Compute the Jacobian matrix
+        # Step 2: Compute the Jacobian in a vectorized manner
         t0 = time.time()
-        jacobian_norm = np.zeros((output_dim, dim))
-        for i in range(num_train):
-            r_i = dist_to_sample[i]
-            phi_r_i = rbf_values[i]
+        # (x_normalized - q_p_train_norm): (num_train, dim)
+        # (rbf_values**3): (num_train,)
+        # Dphi_Dq_p_norm: (num_train, dim)
+        Dphi_Dq_p_norm = - (epsilon**2) * (rbf_values**3)[:, np.newaxis] * (x_normalized - q_p_train_norm)
 
-            if phi_r_i > 1e-12:
-                # IMQ RBF derivative: ∂ϕ/∂q_p = -ε^2 * ϕ(r)^3 * (q_p_sample - q_p_train)
-                dphi_dq_p_norm = -epsilon**2 * (phi_r_i**3) * (x_normalized - q_p_train_norm[i])
-            else:
-                dphi_dq_p_norm = np.zeros_like(x_normalized)
-
-            jacobian_norm += np.outer(W_global[i], dphi_dq_p_norm)
-
+        # Combine with W_global
+        # W_global.T: (output_dim, num_train)
+        # Dphi_Dq_p_norm: (num_train, dim)
+        # jacobian_norm: (output_dim, dim)
+        jacobian_norm = W_global.T @ Dphi_Dq_p_norm
         if echo_level >= 1:
             print(f"Computed Jacobian contributions in {time.time() - t0:.6f} seconds")
 
         # Step 3: Adjust the Jacobian for Min-Max normalization
         t0 = time.time()
-        scale = scaler.scale_  # Shape: (dim,)
+        scale = scaler.scale_  # (dim,)
         jacobian = jacobian_norm * scale[np.newaxis, :]
         if echo_level >= 1:
             print(f"Adjusted Jacobian for Min-Max scaling in {time.time() - t0:.6f} seconds")
@@ -835,13 +812,13 @@ class RBFUtils:
     @staticmethod
     def compute_rbf_jacobian_global_linear(x_normalized, q_p_train_norm, W_global, epsilon, scaler, echo_level=0):
         """
-        Compute the Jacobian for the Linear RBF kernel using the global approach.
+        Compute the Jacobian for the Linear RBF kernel using a vectorized global approach.
 
         Parameters:
         - x_normalized: np.ndarray, normalized input sample (1 x dim).
         - q_p_train_norm: np.ndarray, normalized primary training coordinates (num_train x dim).
         - W_global: np.ndarray, precomputed weights (num_train x output_dim).
-        - epsilon: float, RBF parameter (unused for linear kernel but kept for consistency).
+        - epsilon: float, RBF parameter (unused for linear kernel, but kept for consistency).
         - scaler: MinMaxScaler object used for normalization.
         - echo_level: Level of verbosity for timing (default: 0).
 
@@ -853,33 +830,34 @@ class RBFUtils:
         output_dim = W_global.shape[1]
         num_train = q_p_train_norm.shape[0]
 
-        # Step 1: Compute pairwise distances and RBF values
+        # Step 1: Compute distances
         t0 = time.time()
-        dist_to_sample = np.linalg.norm(q_p_train_norm - x_normalized, axis=1)  # Shape: (num_train,)
-        #rbf_values = RBFUtils.linear_rbf(dist_to_sample, epsilon)  # Use predefined Linear RBF function
+        dist_to_sample = np.linalg.norm(q_p_train_norm - x_normalized, axis=1)  # (num_train,)
         if echo_level >= 1:
-            print(f"Computed distances and RBF values in {time.time() - t0:.6f} seconds")
+            print(f"Computed distances in {time.time() - t0:.6f} seconds")
 
-        # Step 2: Compute the Jacobian matrix
+        # Step 2: Compute derivatives in a vectorized manner
         t0 = time.time()
-        jacobian_norm = np.zeros((output_dim, dim))
-        for i in range(num_train):
-            r_i = dist_to_sample[i]
+        # Initialize Dphi_Dq_p_norm with zeros
+        Dphi_Dq_p_norm = np.zeros((num_train, dim))
 
-            if r_i > 1e-12:
-                # Linear RBF derivative: ∂ϕ/∂q_p = (q_p_sample - q_p_train) / r
-                dphi_dq_p_norm = (x_normalized - q_p_train_norm[i]) / r_i
-            else:
-                dphi_dq_p_norm = np.zeros_like(x_normalized)
+        # Avoid division by zero: only compute for non-zero distances
+        nonzero_mask = dist_to_sample > 1e-12
+        Dphi_Dq_p_norm[nonzero_mask] = (x_normalized - q_p_train_norm[nonzero_mask]) / dist_to_sample[nonzero_mask, np.newaxis]
 
-            jacobian_norm += np.outer(W_global[i], dphi_dq_p_norm)
+        # Combine with W_global
+        # W_global: (num_train, output_dim)
+        # W_global.T: (output_dim, num_train)
+        # Dphi_Dq_p_norm: (num_train, dim)
+        # Result: (output_dim, dim)
+        jacobian_norm = W_global.T @ Dphi_Dq_p_norm
 
         if echo_level >= 1:
             print(f"Computed Jacobian contributions in {time.time() - t0:.6f} seconds")
 
-        # Step 3: Adjust the Jacobian for Min-Max normalization
+        # Step 3: Adjust for Min-Max normalization
         t0 = time.time()
-        scale = scaler.scale_  # Shape: (dim,)
+        scale = scaler.scale_  # (dim,)
         jacobian = jacobian_norm * scale[np.newaxis, :]
         if echo_level >= 1:
             print(f"Adjusted Jacobian for Min-Max scaling in {time.time() - t0:.6f} seconds")
