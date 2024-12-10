@@ -10,7 +10,6 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from itertools import product
-from randomized_singular_value_decomposition import RandomizedSingularValueDecomposition
 
 # Ensure the parent directory is in sys.path
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
