@@ -20,6 +20,31 @@ if parent_dir not in sys.path:
 from hypernet2D import load_or_compute_snaps
 from config import DT, NUM_STEPS, GRID_X, GRID_Y, W0
 
+def remove_duplicates(q_p, q_s, tolerance=1e-8):
+    """
+    Remove near-duplicate rows from q_p and the corresponding rows in q_s.
+    
+    Parameters:
+    - q_p: Primary mode projection data (shape: primary_modes x total_snapshots).
+    - q_s: Secondary mode projection data (shape: secondary_modes x total_snapshots).
+    - tolerance: Tolerance for determining duplicates.
+
+    Returns:
+    - q_p_filtered: Filtered q_p with duplicates removed.
+    - q_s_filtered: Corresponding filtered q_s with the same indices removed.
+    """
+    # Identify unique rows in q_p
+    _, unique_indices = np.unique(np.round(q_p / tolerance) * tolerance, axis=1, return_index=True)
+    # Sort indices to maintain order
+    unique_indices = np.sort(unique_indices)
+    
+    # Filter q_p and q_s based on unique indices
+    q_p_filtered = q_p[:, unique_indices]
+    q_s_filtered = q_s[:, unique_indices]
+    
+    return q_p_filtered, q_s_filtered
+
+
 def get_snapshot_params():
     """
     Generate a list of parameter vectors [mu1, mu2] within specified ranges.
@@ -56,10 +81,10 @@ def linear_rbf(r, epsilon):
 
 # Dictionary mapping kernel names to functions
 rbf_kernels = {
-    'gaussian': gaussian_rbf,
-    'imq': inverse_multiquadric_rbf,
-    'multiquadric': multiquadric_rbf,
-    'linear': linear_rbf
+    #'gaussian': gaussian_rbf,
+    'imq': inverse_multiquadric_rbf
+    #'multiquadric': multiquadric_rbf,
+    #'linear': linear_rbf
 }
 
 def perform_pod(snaps, num_modes=150, method='rsvd', random_state=None):
@@ -203,6 +228,11 @@ def main():
     print(f"Projection took {time.time() - projection_start_time:.2f} seconds.")
     del snaps
 
+    # Remove duplicates from q_p and synchronize with q_s
+    print("Removing duplicates from q_p and synchronizing with q_s...")
+    q_p, q_s = remove_duplicates(q_p, q_s)
+    print(f"Duplicates removed. New shapes: q_p={q_p.shape}, q_s={q_s.shape}")
+
     # Normalize q_p using Min-Max normalization and save the scaler
     print("Normalizing q_p data using Min-Max normalization...")
     scaler = MinMaxScaler(feature_range=(-1, 1))
@@ -237,7 +267,7 @@ def main():
     )
 
     # Define grids for epsilon and kernel names
-    epsilon_values = np.logspace(np.log10(1), np.log10(20), 20)
+    epsilon_values = np.logspace(np.log10(1), np.log10(5), 10)
     kernel_names = list(rbf_kernels.keys())
 
     best_epsilon = None
@@ -260,7 +290,11 @@ def main():
 
         # Solve for W
         try:
-            W = np.linalg.solve(Phi_train, y_train)
+            #W = np.linalg.solve(Phi_train, y_train)
+            U, S, Vt = np.linalg.svd(Phi_train, full_matrices=False)
+            tolerance = 1e-8  # Regularization threshold for singular values
+            S_inv = np.diag([1/s if s > tolerance else 0 for s in S])
+            W = Vt.T @ S_inv @ U.T @ y_train
 
         except np.linalg.LinAlgError:
             print(f"LinAlgError at epsilon={epsilon:.5f}, kernel={kernel_name}. Skipping.")
@@ -308,10 +342,11 @@ def main():
     Phi_train += np.eye(Phi_train.shape[0]) * 1e-8
 
     # Solve for W
-    U, S, Vt = np.linalg.svd(Phi_train, full_matrices=False)
-    tolerance = 1e-8  # Regularization threshold for singular values
-    S_inv = np.diag([1/s if s > tolerance else 0 for s in S])
-    W = Vt.T @ S_inv @ U.T @ q_s_train
+    #U, S, Vt = np.linalg.svd(Phi_train, full_matrices=False)
+    #tolerance = 1e-8  # Regularization threshold for singular values
+    #S_inv = np.diag([1/s if s > tolerance else 0 for s in S])
+    #W = Vt.T @ S_inv @ U.T @ q_s_train
+    W = best_W
 
     # Save the global weight matrix and necessary data
     training_data_filename = os.path.join(model_dir, 'global_weights.pkl')
