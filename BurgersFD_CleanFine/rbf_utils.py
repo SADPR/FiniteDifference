@@ -879,6 +879,35 @@ class RBFUtils:
             print(f"Total time for Jacobian computation: {time.time() - start_time:.6f} seconds")
 
         return jacobian
+    
+    @staticmethod
+    def compute_rbf_jacobian_global_multiquadric_no_norm(x, q_p_train, W_global, epsilon, echo_level=0):
+        start_time = time.time()
+        dim = x.shape[1]
+        output_dim = W_global.shape[1]
+        num_train = q_p_train.shape[0]
+
+        # Step 1: Compute distances and RBF values
+        t0 = time.time()
+        dist_to_sample = np.linalg.norm(q_p_train - x, axis=1)  # (num_train,)
+        rbf_values = RBFUtils.multiquadric_rbf(dist_to_sample, epsilon)  # φ(r)
+        if echo_level >= 1:
+            print(f"Computed distances and RBF values in {time.time() - t0:.6f} seconds")
+
+        # Step 2: Compute derivatives in a vectorized manner
+        t0 = time.time()
+        # Dphi_Dq_p_norm: (num_train, dim)
+        Dphi_Dq_p = epsilon**2 * (x - q_p_train) / rbf_values[:, np.newaxis]
+
+        # jacobian_norm: (output_dim, dim) from W_global.T (output_dim x num_train) @ Dphi_Dq_p_norm (num_train x dim)
+        jacobian = W_global.T @ Dphi_Dq_p
+        if echo_level >= 1:
+            print(f"Computed Jacobian contributions in {time.time() - t0:.6f} seconds")
+
+        if echo_level >= 1:
+            print(f"Total time for Jacobian computation: {time.time() - start_time:.6f} seconds")
+
+        return jacobian
 
     @staticmethod
     def compute_rbf_jacobian_global_imq(x_normalized, q_p_train_norm, W_global, epsilon, scaler, echo_level=0):
@@ -1201,6 +1230,45 @@ class RBFUtils:
         # Step 2: Compute pairwise distances between the input sample and all training points
         t0 = time.time()
         dist_to_sample = np.linalg.norm(q_p_train - q_p_sample_normalized, axis=1)  # Shape: (num_train,)
+        if echo_level >= 1:
+            print(f"Time to compute distances: {time.time() - t0:.6f} seconds")
+
+        # Step 3: Compute the Multiquadric RBF kernel values for the distances
+        t0 = time.time()
+        rbf_values = RBFUtils.multiquadric_rbf(dist_to_sample, epsilon)  # Shape: (num_train,)
+        if echo_level >= 1:
+            print(f"Time to compute RBF values: {time.time() - t0:.6f} seconds")
+
+        # Step 4: Interpolate q_s using the precomputed weights and RBF kernel values
+        t0 = time.time()
+        q_s_pred = rbf_values @ W_global  # Shape: (num_secondary_modes,)
+        if echo_level >= 1:
+            print(f"Time to interpolate q_s: {time.time() - t0:.6f} seconds")
+            print(f"Total time: {time.time() - start_time:.6f} seconds")
+
+        return q_s_pred
+    
+    @staticmethod
+    def interpolate_with_rbf_global_multiquadric_no_norm(q_p_sample, q_p_train, W_global, epsilon, echo_level=0):
+        """
+        Interpolate the secondary modes q_s using global Multiquadric RBF interpolation.
+
+        Parameters:
+        - q_p_sample: The input sample point (reduced coordinates, q_p).
+        - q_p_train: Training data for principal modes.
+        - W_global: Precomputed global RBF weights matrix.
+        - epsilon: The width parameter for the RBF kernel.
+        - scaler: Scaler for normalization (e.g., MinMaxScaler).
+        - echo_level: Level of verbosity for printing timing information (default: 0).
+
+        Returns:
+        - q_s_pred: The predicted secondary modes for the given q_p_sample.
+        """
+        start_time = time.time()
+
+        # Step 2: Compute pairwise distances between the input sample and all training points
+        t0 = time.time()
+        dist_to_sample = np.linalg.norm(q_p_train - q_p_sample.reshape(1, -1), axis=1)  # Shape: (num_train,)
         if echo_level >= 1:
             print(f"Time to compute distances: {time.time() - t0:.6f} seconds")
 

@@ -1467,7 +1467,7 @@ def decode_rbf_global_no_norm(x, W_global, q_p_train, basis, basis2, epsilon, ke
     elif kernel_type == 'linear':
         q_s_pred = RBFUtils.interpolate_with_rbf_global_linear_no_norm(x, q_p_train, W_global, echo_level)
     elif kernel_type == 'multiquadric':
-        q_s_pred = RBFUtils.interpolate_with_rbf_global_multiquadric(x, q_p_train, W_global, epsilon, echo_level)
+        q_s_pred = RBFUtils.interpolate_with_rbf_global_multiquadric_no_norm(x, q_p_train, W_global, epsilon, echo_level)
     else:
         raise ValueError(f"Unsupported kernel type: {kernel_type}")
 
@@ -1537,7 +1537,7 @@ def jac_rbf_global_no_norm(x, W_global, q_p_train, q_s_train, basis, basis2, eps
     elif kernel_type == 'linear':
         rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_linear_no_norm(x.reshape(1, -1), q_p_train, W_global, epsilon, echo_level=echo_level)
     elif kernel_type == 'multiquadric':
-        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_multiquadric(x.reshape(1, -1), q_p_train, W_global, epsilon, echo_level=echo_level)
+        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_multiquadric_no_norm(x.reshape(1, -1), q_p_train, W_global, epsilon, echo_level=echo_level)
     else:
         raise ValueError(f"Unsupported kernel type: {kernel_type}")
 
