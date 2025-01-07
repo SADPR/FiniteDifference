@@ -242,8 +242,8 @@ if __name__ == '__main__':
         exit(1)
 
 
-    epsilon = 0.01
-    neighbors = 20
+    epsilon = 10.0
+    neighbors = 5
     r = 10  # Number of primary modes used
     num_modes = 150
 

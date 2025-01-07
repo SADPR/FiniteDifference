@@ -95,7 +95,7 @@ def perform_pod(snaps, num_modes=150, method='rsvd', random_state=None):
     basis = U
     return basis, sigma
 
-def remove_duplicates(data, tolerance=1e-8):
+def remove_duplicates(data, tolerance=1e-4):
     """Remove near-duplicate rows from data."""
     _, unique_indices = np.unique(np.round(data / tolerance) * tolerance, axis=0, return_index=True)
     return unique_indices
