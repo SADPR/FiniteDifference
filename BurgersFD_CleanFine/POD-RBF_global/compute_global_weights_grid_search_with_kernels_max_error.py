@@ -54,93 +54,12 @@ def linear_rbf(r, epsilon):
     """Linear RBF kernel function."""
     return r
 
-def matern52_rbf(r, epsilon):
-    """
-    Matern 5/2 kernel.
-    φ(r) = (1 + sqrt(5)*εr + 5(εr)^2 / 3) * exp(-sqrt(5)*εr)
-    """
-    sqrt5 = np.sqrt(5.0)
-    scaled_r = epsilon * r
-    tmp = sqrt5 * scaled_r
-    return (1.0 + tmp + (tmp**2)/3.0) * np.exp(-tmp)
-
-def compact_bump_rbf(r, epsilon):
-    """
-    Compactly-supported 'bump' function kernel.
-    φ(r) = exp(1 / ((ε*r)^2 - 1)) if ε*r < 1, else 0
-    """
-    scaled_r = epsilon * r
-    phi = np.zeros_like(scaled_r)
-    inside = scaled_r < 1.0
-    phi[inside] = np.exp(1.0 / (scaled_r[inside]**2 - 1.0))
-    return phi
-
-#############################
-# Five Extra RBF Kernels
-#############################
-
-def thin_plate_spline_rbf(r, epsilon):
-    """
-    Thin Plate Spline (TPS).
-    For 2D: φ(r) = (ε*r)^2 * log((ε*r) + 1e-15)
-    (Adding a small constant inside log() to avoid log(0).)
-    """
-    scaled_r = epsilon * r
-    # Avoid log(0) by adding a tiny offset
-    scaled_r = np.where(scaled_r < 1e-15, 1e-15, scaled_r)
-    return scaled_r**2 * np.log(scaled_r)
-
-def wendland_c2_rbf(r, epsilon):
-    """
-    Wendland C2 kernel (compactly supported).
-    φ(r) = (1 - ε*r)^4 * (4*ε*r + 1) for ε*r < 1, else 0
-    """
-    scaled_r = epsilon * r
-    phi = np.zeros_like(scaled_r)
-    inside = scaled_r < 1.0
-    tmp = 1.0 - scaled_r[inside]
-    phi[inside] = tmp**4 * (4.0 * scaled_r[inside] + 1.0)
-    return phi
-
-def rational_quadratic_rbf(r, epsilon, alpha=1.0):
-    """
-    Rational Quadratic kernel:
-    φ(r) = (1 + (ε*r)^2 / (2*alpha))^(-alpha)
-    For alpha=1, this approximates IMQ. For alpha->∞, approaches Gaussian.
-    """
-    scaled_r = (epsilon*r)**2
-    return (1.0 + scaled_r / (2.0*alpha))**(-alpha)
-
-def cubic_rbf(r, epsilon):
-    """
-    Cubic RBF:
-    φ(r) = (ε*r)^3
-    """
-    return (epsilon*r)**3
-
-def quintic_rbf(r, epsilon):
-    """
-    Quintic RBF:
-    φ(r) = (ε*r)^5
-    """
-    return (epsilon*r)**5
-
-#############################
-# Combined Dictionary
-#############################
-
+# Dictionary mapping kernel names to functions
 rbf_kernels = {
     'gaussian': gaussian_rbf,
     'imq': inverse_multiquadric_rbf,
-    'multiquadric': multiquadric_rbf
-    #'linear': linear_rbf,
-    #'matern52': matern52_rbf,
-    #'bump': compact_bump_rbf,
-    #'thin_plate_spline': thin_plate_spline_rbf,
-    #'wendland_c2': wendland_c2_rbf,
-    #'rational_quadratic': rational_quadratic_rbf,
-    #'cubic': cubic_rbf,
-    #'quintic': quintic_rbf
+    'multiquadric': multiquadric_rbf,
+    #'linear': linear_rbf
 }
 
 def perform_pod(snaps, num_modes=150, method='rsvd', random_state=None):
@@ -169,47 +88,39 @@ def perform_pod(snaps, num_modes=150, method='rsvd', random_state=None):
     return basis, sigma
 
 def main():
-    # Configure logging to capture missing snapshots
+    # Configure logging
     logging.basicConfig(filename='missing_snapshots.log', level=logging.INFO,
                         format='%(asctime)s:%(levelname)s:%(message)s')
 
-    # Use grid and initial conditions directly from config
     grid_x, grid_y = GRID_X, GRID_Y
     w0 = W0
 
-    # Define the folder where snapshots are stored
     snap_folder = "../param_snaps"
 
-    # Ensure the snapshot folder exists
     if not os.path.exists(snap_folder):
         os.makedirs(snap_folder)
         print(f"Created snapshot directory: {snap_folder}")
         print("Please add the required snapshot files before running the script again.")
-        return  # Exit since no snapshots are available
+        return
 
-    # Generate all parameter samples
     mu_samples = get_snapshot_params()
     print(f"Total parameter samples: {len(mu_samples)}")
 
-    # Attempt to load the shape of the first snapshot to determine snapshot dimensions
     try:
         first_snap = load_or_compute_snaps(mu_samples[0], grid_x, grid_y, w0, DT, NUM_STEPS, snap_folder=snap_folder)
         snapshot_shape = first_snap.shape
         print(f"Shape of each snapshot: {snapshot_shape}")
     except FileNotFoundError as e:
         print(f"Error loading the first snapshot: {e}")
-        print("Ensure that at least one snapshot exists to determine the snapshot dimensions.")
         logging.error(f"Error loading the first snapshot: {e}")
-        return  # Exit since snapshot dimensions are unknown
+        return
 
-    snap_count = len(mu_samples)  # Total number of parameter combinations
-    total_snaps = snapshot_shape[1] * snap_count  # Total number of snapshots (time steps * parameter combinations)
+    snap_count = len(mu_samples)
+    total_snaps = snapshot_shape[1] * snap_count
     print(f"Total number of snapshots to aggregate: {total_snaps}")
 
-    # Pre-allocate memory for all snapshots
     snaps = np.zeros((snapshot_shape[0], total_snaps))
 
-    # Collect snapshots into the pre-allocated array
     col_offset = 0
     successful_mu = []
     missing_mu = []
@@ -217,8 +128,8 @@ def main():
     for idx, mu in enumerate(mu_samples):
         try:
             snap_mu = load_or_compute_snaps(mu, grid_x, grid_y, w0, DT, NUM_STEPS, snap_folder=snap_folder)
-            snaps[:, col_offset:col_offset + snap_mu.shape[1]] = snap_mu  # Insert directly
-            col_offset += snap_mu.shape[1]  # Update column offset for the next parameter set
+            snaps[:, col_offset:col_offset + snap_mu.shape[1]] = snap_mu
+            col_offset += snap_mu.shape[1]
             successful_mu.append(mu)
             print(f"Loaded snapshot {idx + 1}/{snap_count} for mu1={mu[0]}, mu2={mu[1]}")
         except FileNotFoundError as e:
@@ -226,29 +137,25 @@ def main():
             missing_mu.append(mu)
             logging.info(f"Missing snapshots for mu1={mu[0]}, mu2={mu[1]}")
 
-    # Trim the pre-allocated array in case some snapshots are missing
     if missing_mu:
         loaded_snaps = col_offset
         snaps = snaps[:, :loaded_snaps]
     else:
-        loaded_snaps = total_snaps  # All snapshots loaded
+        loaded_snaps = total_snaps
 
     print(f"Successfully loaded {loaded_snaps} snapshots out of {total_snaps}.")
-
     if missing_mu:
-        print("Missing parameter sets have been logged in 'missing_snapshots.log'.")
+        print("Missing parameter sets logged.")
 
     if snaps.size == 0:
-        print("No snapshots were loaded. Exiting the workflow.")
+        print("No snapshots were loaded. Exiting.")
         return
 
     print(f"Combined snapshot matrix shape: {snaps.shape}")
 
-    # Define whether to compute the basis or load a precomputed one
-    compute_basis = False  # Set to False to load a precomputed basis
+    compute_basis = False
 
     if not compute_basis:
-        # Load a precomputed basis
         basis_path = 'basis.npy'
         if os.path.exists(basis_path):
             basis = np.load(basis_path, allow_pickle=True)
@@ -257,162 +164,152 @@ def main():
             print(f"Basis file '{basis_path}' not found. Please compute the basis first.")
             return
     else:
-        # Define POD parameters
-        pod_method = 'rsvd'  # Choose between 'svd' or 'rsvd'
-        num_modes = 150  # Total number of POD modes to retain
-        random_state = 42  # For reproducibility (only used if pod_method='rsvd')
-
-        # Perform POD to compute the Reduced Order Basis (ROB)
+        pod_method = 'rsvd'
+        num_modes = 150
+        random_state = 42
         basis, sigma = perform_pod(snaps, num_modes=num_modes, method=pod_method, random_state=random_state)
-        print(f"Computed POD basis with method '{pod_method}' and {num_modes} modes.")
-
-        # Save the computed basis and singular values for future use
         np.save('basis.npy', basis)
         np.save('sigma.npy', sigma)
-        print("Saved computed basis to 'basis.npy' and singular values to 'sigma.npy'.")
+        print("Computed and saved basis and sigma.")
 
-    # Define how many primary modes to use
     primary_modes = 10
-    total_modes = 150  # Ensure total_modes >= primary_modes
+    total_modes = 150
 
-    # Project the snapshots onto the POD basis
     print("Projecting snapshots onto the POD basis...")
     projection_start_time = time.time()
-    q = basis.T @ snaps  # Project snapshots onto the POD basis
-    q_p = q[:primary_modes, :]  # Primary mode projections
-    q_s = q[primary_modes:total_modes, :]  # Secondary mode projections
+    q = basis.T @ snaps
+    q_p = q[:primary_modes, :]
+    q_s = q[primary_modes:total_modes, :]
     print(f"Projection took {time.time() - projection_start_time:.2f} seconds.")
     del snaps
 
-    # Normalize q_p using Min-Max normalization and save the scaler
     print("Normalizing q_p data using Min-Max normalization...")
     scaler = MinMaxScaler(feature_range=(-1, 1))
-    q_p_normalized = scaler.fit_transform(q_p.T).T  # Note the transpose operations
+    q_p_normalized = scaler.fit_transform(q_p.T).T
     print("Normalization complete.")
 
-    # Save the scaler for future use
     model_dir = "pod_rbf_global_model"
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
-        print(f"Created directory: {model_dir}")
 
     with open(os.path.join(model_dir, 'scaler.pkl'), 'wb') as f:
         pickle.dump(scaler, f)
     print("Scaler saved successfully.")
 
-    # Save the normalized q_p and q_s for future use
     np.save(os.path.join(model_dir, 'U_p.npy'), basis[:, :primary_modes])
     np.save(os.path.join(model_dir, 'U_s.npy'), basis[:, primary_modes:total_modes])
     np.save(os.path.join(model_dir, 'q.npy'), q)
     np.save(os.path.join(model_dir, 'q_p_normalized.npy'), q_p_normalized)
     np.save(os.path.join(model_dir, 'q_s.npy'), q_s)
-    print("Primary and secondary modes, as well as projected data (q, q_p_normalized, q_s), saved successfully.")
+    print("Saved q_p_normalized and q_s.")
 
-    # Prepare training data
-    q_p_train = q_p_normalized.T  # Shape: (num_snapshots, num_primary_modes)
-    q_s_train = q_s.T  # Shape: (num_snapshots, num_secondary_modes)
+    q_p_train = q_p_normalized.T
+    q_s_train = q_s.T
 
-    # Split data into training and validation sets
     X_train, X_val, y_train, y_val = train_test_split(
-        q_p_train, q_s_train, test_size=0.2, random_state=42
+        q_p_train, q_s_train, test_size=0.1, random_state=42
     )
 
-    # Define grids for epsilon and kernel names
-    epsilon_values = np.logspace(np.log10(0.0001), np.log10(10), 50)
+    # Load U_p and U_s for full-field reconstruction
+    U_p = np.load(os.path.join(model_dir, 'U_p.npy'))
+    U_s = np.load(os.path.join(model_dir, 'U_s.npy'))
+
+    epsilon_values = np.logspace(np.log10(1), np.log10(10), 10)
     kernel_names = list(rbf_kernels.keys())
 
     best_epsilon = None
     best_kernel_name = None
     lowest_error = np.inf
+    min_max_pointwise_error = np.inf
     best_W = None
 
     print("Optimizing epsilon and kernel using grid search...")
+    # For full-field checks: select a small subset of validation samples
+    # to keep computation manageable.
+    max_samples_for_full_field = 5
+    val_indices_subset = np.random.choice(X_val.shape[0], size=min(max_samples_for_full_field, X_val.shape[0]), replace=False)
+
     for epsilon, kernel_name in product(epsilon_values, kernel_names):
         kernel_func = rbf_kernels[kernel_name]
 
-        # Compute distance matrix between training points
         dists_train = np.linalg.norm(
             X_train[:, np.newaxis, :] - X_train[np.newaxis, :, :], axis=2
         )
-        # Compute kernel matrix Phi_train
         Phi_train = kernel_func(dists_train, epsilon)
-        # Add regularization
         Phi_train += np.eye(Phi_train.shape[0]) * 1e-8
 
-        # Solve for W
         try:
-            W = np.linalg.solve(Phi_train, y_train)
-            #U, S, Vt = np.linalg.svd(Phi_train, full_matrices=False)
-            #tolerance = 1e-8  # Regularization threshold for singular values
-            #S_inv = np.diag([1/s if s > tolerance else 0 for s in S])
-            #W = Vt.T @ S_inv @ U.T @ y_train
-
+            U_, S_, Vt_ = np.linalg.svd(Phi_train, full_matrices=False)
+            tolerance = 1e-8
+            S_inv = np.diag([1/s if s > tolerance else 0 for s in S_])
+            W = Vt_.T @ S_inv @ U_.T @ y_train
         except np.linalg.LinAlgError:
             print(f"LinAlgError at epsilon={epsilon:.5f}, kernel={kernel_name}. Skipping.")
             continue
 
-        # Compute distance matrix between validation and training points
         dists_val = np.linalg.norm(
             X_val[:, np.newaxis, :] - X_train[np.newaxis, :, :], axis=2
         )
-        # Compute kernel matrix Phi_val
         Phi_val = kernel_func(dists_val, epsilon)
-
-        # Predict on validation set
         y_val_pred = Phi_val @ W
 
-        # Compute validation error
-        error = mean_squared_error(y_val, y_val_pred)
-        #error = np.linalg.norm(y_val - y_val_pred) / np.linalg.norm(y_val)
-        print(f"Epsilon: {epsilon:.5f}, Kernel: {kernel_name}, Validation MSE: {error:.5e}")
+        # Compute a small subset check for max pointwise error
+        q_p_val_norm = X_val[val_indices_subset, :]
+        q_p_val_original = scaler.inverse_transform(q_p_val_norm)
+        q_s_val_pred_subset = y_val_pred[val_indices_subset, :]
+        q_s_val_subset = y_val[val_indices_subset, :]
 
-        if error < lowest_error:
-            lowest_error = error
+        w_pred = U_p @ q_p_val_original.T + U_s @ q_s_val_pred_subset.T
+        w_ref = U_p @ q_p_val_original.T + U_s @ q_s_val_subset.T
+
+        max_abs_error = np.max(np.abs(w_ref - w_pred))
+        # MSE just for info
+        error_mse = mean_squared_error(y_val, y_val_pred)
+
+        print(f"Epsilon: {epsilon:.5f}, Kernel: {kernel_name}, MSE: {error_mse:.5e}, Max Abs Err: {max_abs_error:.5e}")
+
+        # Update if we found a lower max pointwise error
+        if max_abs_error < min_max_pointwise_error:
+            min_max_pointwise_error = max_abs_error
             best_epsilon = epsilon
             best_kernel_name = kernel_name
             best_W = W.copy()
 
     if best_epsilon is None or best_kernel_name is None:
-        print("No suitable epsilon and kernel combination found. Exiting.")
+        print("No suitable epsilon and kernel combination found.")
         return
 
     print(f"Best epsilon found: {best_epsilon:.5f}")
-    print(f"Best kernel found: {best_kernel_name} with MSE: {lowest_error:.5e}")
+    print(f"Best kernel found: {best_kernel_name}")
+    print(f"Minimum max pointwise error: {min_max_pointwise_error:.5e}")
 
-    # Use the best epsilon and kernel to compute final W using all data
+    # Final W with all data
     epsilon = best_epsilon
     kernel_func = rbf_kernels[best_kernel_name]
 
-    # Compute distance matrix between all training points
     dists_train = np.linalg.norm(
         q_p_train[:, np.newaxis, :] - q_p_train[np.newaxis, :, :], axis=2
     )
-    # Compute kernel matrix Phi_train
     Phi_train = kernel_func(dists_train, epsilon)
-    # Add regularization
     Phi_train += np.eye(Phi_train.shape[0]) * 1e-8
 
-    # Solve for W
-    #U, S, Vt = np.linalg.svd(Phi_train, full_matrices=False)
-    #tolerance = 1e-8  # Regularization threshold for singular values
-    #S_inv = np.diag([1/s if s > tolerance else 0 for s in S])
-    #W = Vt.T @ S_inv @ U.T @ q_s_train
-    W = np.linalg.solve(Phi_train, q_s_train)
+    U_, S_, Vt_ = np.linalg.svd(Phi_train, full_matrices=False)
+    tolerance = 1e-8
+    S_inv = np.diag([1/s if s > tolerance else 0 for s in S_])
+    W = Vt_.T @ S_inv @ U_.T @ q_s_train
 
-    # Save the global weight matrix and necessary data
     training_data_filename = os.path.join(model_dir, 'global_weights.pkl')
     with open(training_data_filename, 'wb') as f:
         pickle.dump({
-            'W': W,                       # Global weight matrix
-            'q_p_train': q_p_train,       # Normalized primary training coordinates
-            'q_s_train': q_s_train,       # Secondary training outputs
-            'epsilon': epsilon,           # Best epsilon
-            'kernel_name': best_kernel_name  # Best kernel name
+            'W': W,
+            'q_p_train': q_p_train,
+            'q_s_train': q_s_train,
+            'epsilon': epsilon,
+            'kernel_name': best_kernel_name
         }, f)
     print(f"Global weight matrix and data saved in {training_data_filename}.")
 
     print("Processing complete.")
-
 
 if __name__ == '__main__':
     main()
