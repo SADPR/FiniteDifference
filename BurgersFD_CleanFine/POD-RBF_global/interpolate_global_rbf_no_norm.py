@@ -1,4 +1,4 @@
-# interpolate_global_rbf.py
+# interpolate_global_rbf_no_norm.py
 
 import numpy as np
 import matplotlib
@@ -23,11 +23,11 @@ def gaussian_rbf(r, epsilon):
     return np.exp(-(epsilon * r) ** 2)
 
 def inverse_multiquadric_rbf(r, epsilon):
-    """Inverse Multiquadric RBF kernel function."""
+    """Inverse Multiquadric (IMQ) RBF kernel function."""
     return 1.0 / np.sqrt(1 + (epsilon * r) ** 2)
 
 def multiquadric_rbf(r, epsilon):
-    """Multiquadric RBF kernel function."""
+    """Multiquadric (MQ) RBF kernel function."""
     return np.sqrt(1 + (epsilon * r) ** 2)
 
 def linear_rbf(r, epsilon):
@@ -42,27 +42,42 @@ rbf_kernels = {
     'linear': linear_rbf
 }
 
-def reconstruct_snapshot_with_global_rbf(snapshot, U_p, U_s, q_p_train, W, scaler, epsilon, kernel_func, print_times=False):
+def reconstruct_snapshot_with_global_rbf_no_norm(
+    snapshot, U_p, U_s, q_p_train, W,
+    epsilon, kernel_func, print_times=False
+):
+    """
+    Reconstruct the snapshot using a global RBF interpolation (no normalization).
+    This is the same as reconstruct_snapshot_with_global_rbf, but without the scaler step.
+    """
     start_total_time = time.time()
+
+    # 1) Project the snapshot onto the POD basis (primary modes)
     q = U_p.T @ snapshot
     q_p = q[:U_p.shape[1], :]
 
-    # Normalize q_p using the saved scaler
-    q_p_normalized = scaler.transform(q_p.T).T  # Note the transpose operations
-
+    # 2) Instead of normalizing q_p, we use it directly
+    #    For each time step, compute RBF interpolation to get q_s_pred
     reconstructed_snapshots_rbf = []
     num_time_steps = q_p.shape[1]
     for i in range(num_time_steps):
         if print_times:
             print(f"Time step {i+1} of {num_time_steps}")
-        q_p_sample = q_p_normalized[:, i]
 
-        # Compute distances to all training points
+        # Just use q_p[:, i] directly (no scaler.transform)
+        q_p_sample = q_p[:, i]  # shape: (primary_modes,)
+
+        # Compute distances to all training points in q_p_train
+        # q_p_train has shape (num_train_snapshots, primary_modes)
         dists = np.linalg.norm(q_p_train - q_p_sample.reshape(1, -1), axis=1)
+
         # Apply the selected RBF kernel function
         rbf_values = kernel_func(dists, epsilon)
-        # Interpolation
-        q_s_pred = W.T @ rbf_values
+
+        # Interpolation => q_s_pred
+        q_s_pred = W.T @ rbf_values  # shape: (secondary_modes,)
+
+        # Reconstruct the snapshot
         reconstructed_snapshot_rbf = U_p @ q_p[:, i] + U_s @ q_s_pred
         reconstructed_snapshots_rbf.append(reconstructed_snapshot_rbf)
 
@@ -109,7 +124,7 @@ if __name__ == '__main__':
         with open('pod_rbf_global_model/global_weights.pkl', 'rb') as f:
             data = pickle.load(f)
             W = data['W']
-            q_p_train = data['q_p_train']  # Ensure key matches training script
+            q_p_train = data['q_p_train']  # unscaled primary training coords
             epsilon = data['epsilon']
             kernel_name = data.get('kernel_name', 'gaussian')  # Default to 'gaussian' if not provided
         print("Global weight matrix and data loaded successfully.")
@@ -138,23 +153,14 @@ if __name__ == '__main__':
         print(e)
         exit(1)
 
-    # Load the saved scaler (Min-Max scaler)
-    try:
-        with open('pod_rbf_global_model/scaler.pkl', 'rb') as f:
-            scaler = pickle.load(f)
-        print("Min-Max scaler loaded successfully.")
-    except FileNotFoundError:
-        print("Scaler file 'pod_rbf_global_model/scaler.pkl' not found.")
-        exit(1)
-
     # Additional parameters
     num_modes = U_p.shape[1] + U_s.shape[1]
     compare_pod = True  # Set to True to include Standard POD reconstruction
     print_times = False
 
-    # Reconstruct the snapshot using global RBF interpolation
-    pod_rbf_reconstructed = reconstruct_snapshot_with_global_rbf(
-        hdm_snap, U_p, U_s, q_p_train, W, scaler, epsilon, kernel_func, print_times
+    # Reconstruct the snapshot using global RBF interpolation (no normalization)
+    pod_rbf_reconstructed = reconstruct_snapshot_with_global_rbf_no_norm(
+        hdm_snap, U_p, U_s, q_p_train, W, epsilon, kernel_func, print_times
     )
 
     # Reconstruct the snapshot using standard POD with all modes

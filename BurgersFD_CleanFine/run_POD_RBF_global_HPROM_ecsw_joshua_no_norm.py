@@ -8,10 +8,10 @@ from joblib import Parallel, delayed
 
 from hypernet2D import (
     load_or_compute_snaps, plot_snaps,
-    inviscid_burgers_pod_rbf_2D_global_ecsw,
+    inviscid_burgers_pod_rbf_2D_global_ecsw_no_norm,
     inviscid_burgers_res2D, inviscid_burgers_exact_jac2D,
     compute_ECSW_training_matrix_2D_rbf_global,
-    decode_rbf_global
+    decode_rbf_global_no_norm
 )
 from config import DT, NUM_STEPS, NUM_CELLS, GRID_X, GRID_Y, W0
 
@@ -56,15 +56,6 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
         print(f"Training data file '{model_dir}/global_weights.pkl' not found.")
         exit(1)
 
-    # Load the scaler
-    try:
-        with open(os.path.join(model_dir, 'scaler.pkl'), 'rb') as f:
-            scaler = pickle.load(f)
-        print("Loaded Min-Max scaler successfully.")
-    except FileNotFoundError:
-        print(f"Scaler file '{model_dir}/scaler.pkl' not found.")
-        exit(1)
-
     # Load the POD basis matrices
     try:
         U_p = np.load(os.path.join(model_dir, 'U_p.npy'))
@@ -77,6 +68,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
     print(f"mu1: {mu1}, epsilon: {epsilon}, kernel: {kernel_name}")
 
     # ECSW computation
+    '''
     if compute_ecsw:
         snap_sample_factor = 10
 
@@ -87,9 +79,9 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
             snaps = mu_snaps[:, 1::snap_sample_factor]
 
             print(f'Generating training block for mu = {mu}')
-            Ci = compute_ECSW_training_matrix_2D_rbf_global(
+            Ci = compute_ECSW_training_matrix_2D_rbf_global_no_norm(
                 snaps, prev_snaps, U_p, U_s, W_global, q_p_train, q_s_train, inviscid_burgers_res2D, inviscid_burgers_exact_jac2D, 
-                GRID_X, GRID_Y, DT, mu, scaler, epsilon, kernel_type=kernel_name
+                GRID_X, GRID_Y, DT, mu, epsilon, kernel_type=kernel_name
             )
             Clist.append(Ci)
 
@@ -114,7 +106,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
         res = Parallel(n_jobs=-1, verbose=10)(delayed(nnls)(c, c.sum(axis=1), maxiter=9999999999) for c in np.array_split(C,10,axis=1))
         for wi in res:
             combined_weights += [wi[0]]
-        weights = np.hstack(combined_weights)
+        weights = np.hstack(combined_weights)_
 
         print('nnls solver residual: {}'.format(
             np.linalg.norm(C @ weights - C.sum(axis=1)) / np.linalg.norm(
@@ -130,15 +122,16 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
         np.save(os.path.join(model_dir, 'ecsw_weights_rbf_global.npy'), weights)
     else:
         weights = np.load(os.path.join(model_dir, 'ecsw_weights_rbf_global.npy'))
-
+    '''
+    weights = np.load(os.path.join(model_dir, 'ecsw_weights_rbf_global.npy'))
     print(f'N_e = {np.sum(weights > 0)}')
 
     # Time-stepping to compute the POD-RBF PROM with ECSW
     t0 = time.time()
     q_snaps = U_p.T@hdm_snaps
-    pod_rbf_prom_q_p_snaps, man_times = inviscid_burgers_pod_rbf_2D_global_ecsw(
+    pod_rbf_prom_q_p_snaps, man_times = inviscid_burgers_pod_rbf_2D_global_ecsw_no_norm(
         GRID_X, GRID_Y, W0, DT, NUM_STEPS, mu_rom, U_p, U_s,
-        W_global, q_p_train, q_s_train, weights, epsilon, scaler, q_snaps, kernel_type=kernel_name
+        W_global, q_p_train, q_s_train, weights, epsilon, q_snaps, kernel_type=kernel_name
     )
     
     elapsed_time = time.time() - t0
@@ -150,8 +143,8 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
 
     for i in range(num_time_steps):
         q_p_snapshot = pod_rbf_prom_q_p_snaps[:, i]
-        pod_rbf_hprom_snaps[:, i] = decode_rbf_global(
-            q_p_snapshot, W_global, q_p_train, U_p, U_s, epsilon, scaler, kernel_type=kernel_name
+        pod_rbf_hprom_snaps[:, i] = decode_rbf_global_no_norm(
+            q_p_snapshot, W_global, q_p_train, U_p, U_s, epsilon, kernel_type=kernel_name
         )
 
     # Calculate relative error
@@ -165,7 +158,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
         print(f'Snapshot saved as {snapshot_filename}')
 
     if save_plot:
-        inds_to_plot = range(0, NUM_STEPS + 1, 50)
+        inds_to_plot = range(0, NUM_STEPS + 1, 20)
         snaps_to_plot = [hdm_snaps, pod_rbf_hprom_snaps]
         labels = ['HDM', 'POD-RBF HPROM (Global)']
         colors = ['black', 'green']
@@ -184,4 +177,4 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
 
 
 if __name__ == "__main__":
-    main(mu1=4.75, mu2=0.02, compute_ecsw=False, save_npy=False, save_plot=True)
+    main(mu1=4.875, mu2=0.015, compute_ecsw=False, save_npy=False, save_plot=True)
