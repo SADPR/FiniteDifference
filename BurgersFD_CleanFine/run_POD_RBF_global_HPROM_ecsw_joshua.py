@@ -180,8 +180,60 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
 
     print(f'num_its: {man_times[0]:.2f}, jac_time: {man_times[1]:.2f}, res_time: {man_times[2]:.2f}, ls_time: {man_times[3]:.2f}')
 
+    ############################################################################
+    # ADDED CODE: Create animation overlaying HDM and POD-RBF using FuncAnimation
+    ############################################################################
+    import matplotlib.animation as animation
+
+    # We'll create a figure and reuse it for each frame
+    fig_anim, (ax1_anim, ax2_anim) = plt.subplots(2, 1, figsize=(10, 8))
+
+    # We define the data sets and labeling for overlay
+    snaps_to_plot_anim = [hdm_snaps, pod_rbf_hprom_snaps]
+    labels_anim = ['HDM', 'POD-RBF HPROM']
+    colors_anim = ['black', 'green']
+    linewidths_anim = [2, 2]
+
+    def animate_func(frame_idx):
+        ax1_anim.clear()
+        ax2_anim.clear()
+
+        # Fix the y-limits for both subplots
+        ax1_anim.set_ylim(0, 6.5)
+        ax2_anim.set_ylim(0, 6.5)
+
+        # Overlay both HDM & POD-RBF for this single time index 'frame_idx'
+        for i, each_snaps in enumerate(snaps_to_plot_anim):
+            plot_snaps(
+                GRID_X, GRID_Y,
+                each_snaps, [frame_idx],  # single time index
+                label=labels_anim[i],
+                fig_ax=(fig_anim, ax1_anim, ax2_anim),
+                color=colors_anim[i],
+                linewidth=linewidths_anim[i]
+            )
+        ax1_anim.legend()
+        ax2_anim.legend()
+        ax1_anim.set_title(f'Timestep = {frame_idx}')
+
+    save_gif = True
+    if save_gif:
+        anim = animation.FuncAnimation(
+            fig_anim, animate_func,
+            frames=range(num_time_steps),
+            interval=300,  # ms between frames
+            blit=False,
+            repeat=False
+        )
+
+        # Save the animation as a GIF with 30 FPS
+        anim_filename = f'pod_rbf_hprom_global_{mu_rom[0]:.2f}_{mu_rom[1]:.3f}.gif'
+        anim.save(anim_filename, writer='imagemagick', fps=30)
+        print(f"Saved animation '{anim_filename}' with overlay of HDM & POD-RBF at each timestep.")
+
+
     return elapsed_time, relative_error
 
 
 if __name__ == "__main__":
-    main(mu1=4.75, mu2=0.02, compute_ecsw=False, save_npy=False, save_plot=True)
+    main(mu1=4.75, mu2=0.02, compute_ecsw=False, save_npy=True, save_plot=True)

@@ -555,7 +555,7 @@ def inviscid_burgers_rnm2D_joshua(grid_x, grid_y, w0, dt, num_steps, mu, rnm, re
 
     return snaps, (num_its, jac_time, res_time, ls_time)
 
-def inviscid_burgers_rnm2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, rnm, ref, basis, basis2, weights):
+def inviscid_burgers_rnm2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, rnm, ref, basis, basis2, weights, q_snaps):
     """
     Use a first-order Godunov spatial discretization and a second-order trapezoid rule
     time integrator to solve an LSPG manifold PROM for a parameterized inviscid 1D burgers
@@ -664,6 +664,11 @@ def inviscid_burgers_rnm2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, rnm, ref,
         jac_time += jac_timep
         res_time += res_timep
         ls_time += ls_timep
+
+        if i % 1000594 == 0 or i < 0:
+            print(f"This step was given: {i}")
+            y = q_snaps[:,i+1]
+            y = torch.tensor(y, dtype=torch.float)
 
         with torch.no_grad():
             w = V @ y + Vbar @ rnm(torch.cat((y, tmu))) #Vbar@rnm(y)
@@ -1186,8 +1191,9 @@ def inviscid_burgers_pod_rbf_2D_global_ecsw(grid_x, grid_y, w0, dt, num_steps, m
         res_time += res_timep
         ls_time += ls_timep
 
-        if i < 0:
-            y = q_snaps[:,i]
+        if i % 1000594 == 0 or i < 0:
+            print(f"This step was given: {i}")
+            y = q_snaps[:,i+1]
 
         # Reconstruct the full state
         w_reconstructed = decode_rbf_global(y, W_global, q_p_train, V, Vbar, epsilon, scaler, kernel_type, echo_level=0)
@@ -1324,7 +1330,7 @@ def inviscid_burgers_pod_rbf_2D_global_ecsw_no_norm(grid_x, grid_y, w0, dt, num_
         res_time += res_timep
         ls_time += ls_timep
 
-        if i % 20 == 0:
+        if i % 50 == 5894 or i < 0:
             print(f"This step was given: {i}")
             y = q_snaps[:,i+1]
 
@@ -2289,10 +2295,11 @@ def inviscid_burgers_exact_jac2D(w, dt, JDxec, JDyec, Eye):
 
 def inviscid_burgers_exact_jac2D_ecsw(w, dt, JDxec, JDyec, Eye, sample_inds, augmented_inds):
     u, v = np.split(w, 2)
-    if u.size > augmented_inds.size:
-        ud, vd = 0.5 * dt * sp.diags(u[augmented_inds]), 0.5 * dt * sp.diags(v[augmented_inds])
-    else:
-        ud, vd = 0.5 * dt * sp.diags(u), 0.5 * dt * sp.diags(v)
+    #if u.size > augmented_inds.size:
+    #    ud, vd = 0.5 * dt * sp.diags(u[augmented_inds]), 0.5 * dt * sp.diags(v[augmented_inds])
+    #else:
+    #    ud, vd = 0.5 * dt * sp.diags(u), 0.5 * dt * sp.diags(v)
+    ud, vd = 0.5 * dt * sp.diags(u), 0.5 * dt * sp.diags(v)
     ul = (JDxec@ud + 0.5*JDyec@vd)
     ur = (0.5*JDyec@ud)
     ll = (0.5*JDxec@vd)

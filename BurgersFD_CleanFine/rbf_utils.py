@@ -723,7 +723,7 @@ class RBFUtils:
         return jacobian
     
     @staticmethod
-    def compute_rbf_jacobian_global_gaussian_no_norm_(x, q_p_train, W_global, epsilon, echo_level=0):
+    def compute_rbf_jacobian_global_gaussian_no_norm(x, q_p_train, W_global, epsilon, echo_level=0):
         """
         Compute the Jacobian for the Gaussian RBF kernel using a vectorized global approach.
 
@@ -774,7 +774,7 @@ class RBFUtils:
         return jacobian
     
     @staticmethod
-    def compute_rbf_jacobian_global_gaussian_no_norm(x, q_p_train, W_global, epsilon, echo_level=0):
+    def compute_rbf_jacobian_global_gaussian_no_norm_finite_differences(x, q_p_train, W_global, epsilon, echo_level=0):
         """
         Compute the Jacobian for the Gaussian RBF kernel using a vectorized global approach,
         but via finite differences (no analytical derivative).
@@ -844,7 +844,6 @@ class RBFUtils:
             print(f"Total time for Jacobian computation: {time.time() - start_time:.6f} seconds")
 
         return jacobian
-
 
     @staticmethod
     def compute_rbf_jacobian_global_multiquadric(x_normalized, q_p_train_norm, W_global, epsilon, scaler, echo_level=0):
@@ -1004,6 +1003,77 @@ class RBFUtils:
         jacobian = W_global.T @ Dphi_Dq_p
         if echo_level >= 1:
             print(f"Computed Jacobian contributions in {time.time() - t0:.6f} seconds")
+
+        if echo_level >= 1:
+            print(f"Total time for Jacobian computation: {time.time() - start_time:.6f} seconds")
+
+        return jacobian
+    
+    @staticmethod
+    def compute_rbf_jacobian_global_imq_no_norm_finite_differences(x, q_p_train, W_global, epsilon, echo_level=0):
+        """
+        Compute the Jacobian for the Inverse Multiquadric (IMQ) RBF kernel using a vectorized global approach.
+
+        Parameters:
+        - x: np.ndarray, normalized input sample (1 x dim).
+        - q_p_train: np.ndarray, normalized primary training coordinates (num_train x dim).
+        - W_global: np.ndarray, precomputed weights (num_train x output_dim).
+        - epsilon: float, RBF parameter.
+        - scaler: MinMaxScaler object used for normalization.
+        - echo_level: Level of verbosity for timing (default: 0).
+
+        Returns:
+        - jacobian: np.ndarray, Jacobian matrix (output_dim x dim).
+        """
+        start_time = time.time()
+        dim = x.shape[1]
+        output_dim = W_global.shape[1]
+        num_train = q_p_train.shape[0]
+
+        # Define a small step for finite differences
+        fd_step = 1e-6
+
+        # -------------------------------------------------------------------------
+        # Helper function f_func(x_sample) that does the interpolation at x_sample
+        # and returns an array of shape (output_dim,).
+        # -------------------------------------------------------------------------
+        def f_func(x_sample):
+            # x_sample is shape (1, dim)
+            dist_to_sample = np.linalg.norm(q_p_train - x_sample, axis=1)  # (num_train,)
+            rbf_values = RBFUtils.inverse_multiquadric_rbf(dist_to_sample, epsilon)    # (num_train,)
+            # Interpolate
+            f_val = rbf_values @ W_global  # shape: (output_dim,)
+            return f_val
+
+        # Evaluate f_func at the current x
+        t0 = time.time()
+        f_base = f_func(x)
+        if echo_level >= 1:
+            print(f"Interpolated base value in {time.time() - t0:.6f} seconds")
+
+        # Initialize the Jacobian
+        t0 = time.time()
+        if echo_level >= 1:
+            print("Computing the Jacobian matrix via finite differences...")
+
+        jacobian = np.zeros((output_dim, dim))
+
+        # For each dimension, do a central difference
+        for i in range(dim):
+            # Create perturbed copies of x
+            x_plus  = x.copy()
+            x_minus = x.copy()
+            x_plus[0, i]  += fd_step
+            x_minus[0, i] -= fd_step
+
+            f_plus  = f_func(x_plus)   # shape: (output_dim,)
+            f_minus = f_func(x_minus)  # shape: (output_dim,)
+
+            # Central difference
+            jacobian[:, i] = (f_plus - f_minus) / (2.0 * fd_step)
+
+        if echo_level >= 1:
+            print(f"Computed finite-difference Jacobian in {time.time() - t0:.6f} seconds")
 
         if echo_level >= 1:
             print(f"Total time for Jacobian computation: {time.time() - start_time:.6f} seconds")
