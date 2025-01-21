@@ -9,6 +9,9 @@ import pickle  # Changed from joblib to pickle
 import sys
 import time
 
+# Removed joblib import
+# from joblib import load  # No longer needed
+
 # Ensure the parent directory is in sys.path
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if parent_dir not in sys.path:
@@ -17,55 +20,43 @@ if parent_dir not in sys.path:
 # Import required functions
 from hypernet2D import load_or_compute_snaps, make_2D_grid, plot_snaps
 
-def reconstruct_snapshot_with_gp(snapshot, U_p, U_s, scaler, gp_model, print_times=False):
-    """
-    Reconstruct snapshots using a single, multi-dimensional Gaussian Process
-    model that was trained on *unscaled* q_s.
-
-    Parameters:
-    - snapshot : Full high-dimensional snapshot(s) to reconstruct.
-    - U_p, U_s : POD basis matrices for primary and secondary modes.
-    - scaler   : MinMaxScaler for q_p only.
-    - gp_model : The fitted GP model (unscaled q_s).
-    - print_times : (bool) Print timing information if True.
-    """
+def reconstruct_snapshot_with_gp(snapshot, U_p, U_s, scaler, y_scaler, gp_model, print_times=False):
     start_total_time = time.time()
     q = U_p.T @ snapshot
     q_p = q[:U_p.shape[1], :]
-
+    
     # Normalize q_p using the saved scaler
-    q_p_normalized = scaler.transform(q_p.T).T  # Shape: (num_primary_modes, num_time_steps)
-
+    q_p_normalized = scaler.transform(q_p.T).T  # Note the transpose operations
+    
     # Predict q_s using the GP model
     num_time_steps = q_p_normalized.shape[1]
-    q_s_pred = []
-
+    q_s_pred_scaled = []
+    
     if print_times:
         print("Predicting q_s for each time step using GP model...")
-
+    
     for i in range(num_time_steps):
-        q_p_sample = q_p_normalized[:, i].reshape(1, -1)  # (1, num_primary_modes)
-        # gp_model.predict(...) -> shape (1, num_secondary_modes)
-        q_s_sample_unscaled = gp_model.predict(q_p_sample)
-        q_s_pred.append(q_s_sample_unscaled.flatten())
-
-    # Convert from list to array of shape (num_secondary_modes, num_time_steps)
-    q_s_pred = np.array(q_s_pred).T
-
-    # Because we trained on unscaled q_s, these predictions are already in the unscaled space.
+        q_p_sample = q_p_normalized[:, i].reshape(1, -1)
+        q_s_sample_scaled = gp_model.predict(q_p_sample)
+        q_s_pred_scaled.append(q_s_sample_scaled.flatten())
+    
+    q_s_pred_scaled = np.array(q_s_pred_scaled).T  # Shape: (num_secondary_modes, num_time_steps)
+    
+    # Inverse transform q_s_pred_scaled using the saved y_scaler
+    q_s_pred = y_scaler.inverse_transform(q_s_pred_scaled.T).T  # Shape: (num_secondary_modes, num_time_steps)
+    
+    # Reconstruct the snapshot
     reconstructed_snapshots_gp = []
     for i in range(num_time_steps):
         reconstructed_snapshot_gp = U_p @ q_p[:, i] + U_s @ q_s_pred[:, i]
         reconstructed_snapshots_gp.append(reconstructed_snapshot_gp)
-
-    reconstructed_snapshots_gp = np.array(reconstructed_snapshots_gp).T  # (num_dofs, num_time_steps)
-
+    
+    reconstructed_snapshots_gp = np.array(reconstructed_snapshots_gp).T  # Shape: (num_dofs, num_time_steps)
+    
     if print_times:
-        elapsed = time.time() - start_total_time
-        print(f"Reconstruction process completed in {elapsed:.6f} seconds")
-
+        print(f"Reconstruction process completed in {time.time() - start_total_time:.6f} seconds")
+    
     return reconstructed_snapshots_gp
-
 
 if __name__ == '__main__':
     # Define the parameter pair you want to reconstruct and compare
@@ -78,7 +69,7 @@ if __name__ == '__main__':
     xl, xu, yl, yu = 0, 100, 0, 100
     grid_x, grid_y = make_2D_grid(xl, xu, yl, yu, num_cells_x, num_cells_y)
 
-    # Initial condition
+    # Initial condition (replace with actual initial condition as needed)
     w0 = np.ones((num_cells_x * num_cells_y * 2,))  # Example initial condition
 
     # Define the folder where snapshots are stored
@@ -99,13 +90,13 @@ if __name__ == '__main__':
         print(e)
         exit(1)  # Exit since the target snapshot is not available
 
-    # Load the GP model (trained on unscaled q_s)
+    # Load the GP model
     modes_dir = "modes"
     try:
-        gp_models_filename = os.path.join(modes_dir, 'gp_model.pkl')
+        gp_models_filename = os.path.join(modes_dir, 'multioutput_gp_model.pkl')  # Changed extension to .pkl
         with open(gp_models_filename, 'rb') as f:
-            gp_model = pickle.load(f)
-        print("Single multi-output GP model (unscaled q_s) loaded successfully.")
+            gp_model = pickle.load(f)  # Changed from joblib.load to pickle.load
+        print("GP model loaded successfully.")
     except FileNotFoundError:
         print(f"File '{gp_models_filename}' not found.")
         exit(1)
@@ -129,14 +120,23 @@ if __name__ == '__main__':
         print("Scaler file 'scaler.pkl' not found.")
         exit(1)
 
+    # Load the saved y_scaler (StandardScaler for q_s)
+    try:
+        with open(os.path.join(modes_dir, 'y_scaler.pkl'), 'rb') as f:
+            y_scaler = pickle.load(f)
+        print("StandardScaler for q_s loaded successfully.")
+    except FileNotFoundError:
+        print("y_scaler file 'y_scaler.pkl' not found.")
+        exit(1)
+
     # Additional parameters
     num_modes = U_p.shape[1] + U_s.shape[1]
     compare_pod = True  # Set to True to include Standard POD reconstruction
     print_times = False
 
-    # Reconstruct the snapshot using GP interpolation (q_s unscaled)
+    # Reconstruct the snapshot using GP interpolation
     gp_reconstructed = reconstruct_snapshot_with_gp(
-        hdm_snap, U_p, U_s, scaler, gp_model, print_times
+        hdm_snap, U_p, U_s, scaler, y_scaler, gp_model, print_times
     )
 
     # Reconstruct the snapshot using standard POD with all modes
@@ -147,8 +147,7 @@ if __name__ == '__main__':
         q_pod = U_modes.T @ snapshot
         reconstructed_pod = U_modes @ q_pod
         if print_times:
-            elapsed = time.time() - start_time
-            print(f"POD reconstruction took: {elapsed:.6f} seconds")
+            print(f"POD reconstruction took: {time.time() - start_time:.6f} seconds")
         return reconstructed_pod
 
     pod_reconstructed = None

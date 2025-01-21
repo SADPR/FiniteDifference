@@ -73,7 +73,7 @@ def main():
     # Define simulation parameters
     dt = 0.05
     num_steps = 500
-    num_cells_x, num_cells_y = 250, 250
+    num_cells_x, num_cells_y = 750, 750
     xl, xu, yl, yu = 0, 100, 0, 100
     grid_x, grid_y = make_2D_grid(xl, xu, yl, yu, num_cells_x, num_cells_y)
 
