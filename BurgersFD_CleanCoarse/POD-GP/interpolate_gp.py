@@ -100,9 +100,9 @@ if __name__ == '__main__':
         exit(1)  # Exit since the target snapshot is not available
 
     # Load the GP model (trained on unscaled q_s)
-    modes_dir = "modes"
+    model_dir = "pod_gp_model"  # Changed from "modes"
     try:
-        gp_models_filename = os.path.join(modes_dir, 'gp_model.pkl')
+        gp_models_filename = os.path.join(model_dir, 'gp_model.pkl')
         with open(gp_models_filename, 'rb') as f:
             gp_model = pickle.load(f)
         print("Single multi-output GP model (unscaled q_s) loaded successfully.")
@@ -112,8 +112,8 @@ if __name__ == '__main__':
 
     # Load U_p and U_s
     try:
-        U_p = np.load(os.path.join(modes_dir, 'U_p.npy'))
-        U_s = np.load(os.path.join(modes_dir, 'U_s.npy'))
+        U_p = np.load(os.path.join(model_dir, 'U_p.npy'))
+        U_s = np.load(os.path.join(model_dir, 'U_s.npy'))
         U_full = np.hstack((U_p, U_s))  # Full U matrix with all modes
         print("POD basis matrices (U_p and U_s) loaded successfully.")
     except FileNotFoundError as e:
@@ -122,7 +122,7 @@ if __name__ == '__main__':
 
     # Load the saved scaler (Min-Max scaler for q_p)
     try:
-        with open(os.path.join(modes_dir, 'scaler.pkl'), 'rb') as f:
+        with open(os.path.join(model_dir, 'scaler.pkl'), 'rb') as f:
             scaler = pickle.load(f)
         print("Min-Max scaler for q_p loaded successfully.")
     except FileNotFoundError:

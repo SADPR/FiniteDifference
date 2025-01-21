@@ -187,12 +187,12 @@ def main():
     print("Normalization of q_p complete.")
 
     # Save the scaler for q_p
-    modes_dir = "modes"
-    if not os.path.exists(modes_dir):
-        os.makedirs(modes_dir)
-        print(f"Created modes directory: {modes_dir}")
+    model_dir = "pod_gp_model"  # Changed from "modes" to "pod_gp_model"
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
+        print(f"Created model directory: {model_dir}")
 
-    with open(os.path.join(modes_dir, 'scaler.pkl'), 'wb') as f:
+    with open(os.path.join(model_dir, 'scaler.pkl'), 'wb') as f:
         pickle.dump(scaler, f)
     print("Scaler saved successfully.")
 
@@ -204,7 +204,7 @@ def main():
     # q_s_scaled = y_scaler.fit_transform(q_s.T).T
     # print("Scaling of q_s complete.")
     #
-    # with open(os.path.join(modes_dir, 'y_scaler.pkl'), 'wb') as f:
+    # with open(os.path.join(model_dir, 'y_scaler.pkl'), 'wb') as f:
     #     pickle.dump(y_scaler, f)
     # print("y_scaler saved successfully.")
     #
@@ -212,12 +212,12 @@ def main():
     # -------------------------------------------------------------------------
 
     # Save the unscaled q_s for future use
-    np.save(os.path.join(modes_dir, 'U_p.npy'), basis[:, :primary_modes])
-    np.save(os.path.join(modes_dir, 'U_s.npy'), basis[:, primary_modes:total_modes])
-    np.save(os.path.join(modes_dir, 'q.npy'), q)
-    np.save(os.path.join(modes_dir, 'q_p_normalized.npy'), q_p_normalized)
-    # np.save(os.path.join(modes_dir, 'q_s_scaled.npy'), q_s_scaled)  # commented out
-    np.save(os.path.join(modes_dir, 'q_s.npy'), q_s)  # Save unscaled q_s
+    np.save(os.path.join(model_dir, 'U_p.npy'), basis[:, :primary_modes])
+    np.save(os.path.join(model_dir, 'U_s.npy'), basis[:, primary_modes:total_modes])
+    np.save(os.path.join(model_dir, 'q.npy'), q)
+    np.save(os.path.join(model_dir, 'q_p_normalized.npy'), q_p_normalized)
+    # np.save(os.path.join(model_dir, 'q_s_scaled.npy'), q_s_scaled)  # commented out
+    np.save(os.path.join(model_dir, 'q_s.npy'), q_s)  # Save unscaled q_s
     print("Primary and secondary modes, as well as projected data, saved successfully.")
 
     # Prepare training data
@@ -252,7 +252,7 @@ def main():
     print(f"Training completed in {time.time() - start_time:.2f} seconds.")
 
     # Save the single multi-output GP
-    gp_models_filename = os.path.join(modes_dir, 'gp_model.pkl')
+    gp_models_filename = os.path.join(model_dir, 'gp_model.pkl')
     with open(gp_models_filename, 'wb') as f:
         pickle.dump(base_gp, f)
     print(f"GP model saved successfully in {gp_models_filename}.")
@@ -261,4 +261,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
