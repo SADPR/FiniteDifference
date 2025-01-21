@@ -69,7 +69,7 @@ def reconstruct_snapshot_with_gp(snapshot, U_p, U_s, scaler, gp_model, print_tim
 
 if __name__ == '__main__':
     # Define the parameter pair you want to reconstruct and compare
-    target_mu = [5.19, 0.026]  # Example: mu1=5.19, mu2=0.026
+    target_mu = [4.75, 0.02]  # Example: mu1=5.19, mu2=0.026
 
     # Define simulation parameters
     dt = 0.05
