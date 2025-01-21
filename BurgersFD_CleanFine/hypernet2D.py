@@ -555,7 +555,7 @@ def inviscid_burgers_rnm2D_joshua(grid_x, grid_y, w0, dt, num_steps, mu, rnm, re
 
     return snaps, (num_its, jac_time, res_time, ls_time)
 
-def inviscid_burgers_rnm2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, rnm, ref, basis, basis2, weights, q_snaps):
+def inviscid_burgers_rnm2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, rnm, ref, basis, basis2, weights):
     """
     Use a first-order Godunov spatial discretization and a second-order trapezoid rule
     time integrator to solve an LSPG manifold PROM for a parameterized inviscid 1D burgers
@@ -664,11 +664,6 @@ def inviscid_burgers_rnm2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, rnm, ref,
         jac_time += jac_timep
         res_time += res_timep
         ls_time += ls_timep
-
-        if i % 1000594 == 0 or i < 0:
-            print(f"This step was given: {i}")
-            y = q_snaps[:,i+1]
-            y = torch.tensor(y, dtype=torch.float)
 
         with torch.no_grad():
             w = V @ y + Vbar @ rnm(torch.cat((y, tmu))) #Vbar@rnm(y)
@@ -977,96 +972,8 @@ def inviscid_burgers_pod_rbf_2D_global(grid_x, grid_y, w0, dt, num_steps, mu, ba
 
     return snaps, (num_its, jac_time, res_time, ls_time)
 
-def inviscid_burgers_pod_rbf_2D_global_no_norm(grid_x, grid_y, w0, dt, num_steps, mu, basis, basis2,
-                                       W_global, q_p_train, q_s_train, epsilon, kernel_type="gaussian"):
-    """
-    Solves the 2D inviscid Burgers' equations using a Reduced-Order Model (ROM)
-    augmented with Proper Orthogonal Decomposition (POD) and global Radial Basis Functions (RBF).
-    
-    Parameters:
-    - grid_x, grid_y: Arrays defining the grid points in the x and y directions.
-    - w0: Initial state vector (flattened for both u and v components).
-    - dt: Time step size.
-    - num_steps: Number of time steps to simulate.
-    - mu: Parameter vector [mu1, mu2].
-    - basis: Primary POD modes matrix (\(\mathbf{V}\)).
-    - basis2: Secondary POD modes matrix (\(\mathbf{\bar{V}}\)).
-    - W_global: Precomputed global RBF weights matrix.
-    - q_p_train, q_s_train: Training data for RBF interpolation.
-    - epsilon: Shape parameter for RBF.
-    - kernel_type: Type of RBF kernel to use (e.g., "gaussian").
-    
-    Returns:
-    - snaps: Array of solution snapshots at each time step.
-    - (num_its, jac_time, res_time, ls_time): Performance metrics.
-    """
-
-    # -----------------------------------
-    # 1. Operators Setup
-    # -----------------------------------
-    Dxec, Dyec, JDxec, JDyec, Eye = get_ops(grid_x, grid_y)
-
-    num_its = 0
-    jac_time = 0
-    res_time = 0
-    ls_time = 0
-
-    # Initial conditions
-    y0 = basis.T @ w0  # Project w0 onto the POD basis
-    w0_reconstructed = decode_rbf_global_no_norm(y0, W_global, q_p_train, basis, basis2, epsilon, kernel_type)
-
-    nred = y0.shape[0]
-    snaps = np.zeros((w0_reconstructed.shape[0], num_steps + 1))
-    red_coords = np.zeros((nred, num_steps + 1))
-    snaps[:, 0] = w0_reconstructed
-    red_coords[:, 0] = y0
-
-    wp = w0_reconstructed.copy()
-    yp = y0.copy()
-
-    # Decode function using global RBF
-    def decode_func(x):
-        return decode_rbf_global_no_norm(x, W_global, q_p_train, basis, basis2, epsilon, kernel_type)
-
-    # Jacobian function for global RBF
-    def jac_rbf_func(x):
-        return jac_rbf_global_no_norm(x, W_global, q_p_train, q_s_train, basis, basis2, epsilon, kernel_type)
-
-    print(f"Running POD-RBF Global of size {nred} for mu1={mu[0]}, mu2={mu[1]}")
-
-    # Time-Stepping Loop
-    for i in range(num_steps):
-        def res(w):
-            return inviscid_burgers_res2D(w, grid_x, grid_y, dt, wp, mu, Dxec, Dyec)
-
-        def jac(w):
-            return inviscid_burgers_exact_jac2D(w, dt, JDxec, JDyec, Eye)
-
-        print(f" ... Working on timestep {i}")
-        t0 = time.time()
-
-        # Solve using Gauss-Newton for POD-RBF
-        y, resnorms, times = gauss_newton_pod_rbf(
-            res, jac, yp, decode_func, jac_rbf_func
-        )
-        jac_timep, res_timep, ls_timep = times
-        num_its += len(resnorms)
-        jac_time += jac_timep
-        res_time += res_timep
-        ls_time += ls_timep
-
-        # Reconstruct the full state
-        w_reconstructed = decode_func(y)
-
-        red_coords[:, i + 1] = y
-        snaps[:, i + 1] = w_reconstructed
-        wp = w_reconstructed
-        yp = y
-
-    return snaps, (num_its, jac_time, res_time, ls_time)
-
 def inviscid_burgers_pod_rbf_2D_global_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, basis, basis2,
-                                            W_global, q_p_train, q_s_train, weights, epsilon, scaler, q_snaps, kernel_type='gaussian'):
+                                            W_global, q_p_train, q_s_train, weights, epsilon, scaler, kernel_type='gaussian'):
     """
     Use a first-order Godunov spatial discretization and a second-order trapezoid rule
     time integrator to solve an LSPG manifold PROM for a parameterized inviscid 2D Burgers'
@@ -1191,10 +1098,6 @@ def inviscid_burgers_pod_rbf_2D_global_ecsw(grid_x, grid_y, w0, dt, num_steps, m
         res_time += res_timep
         ls_time += ls_timep
 
-        if i % 1000594 == 0 or i < 0:
-            print(f"This step was given: {i}")
-            y = q_snaps[:,i+1]
-
         # Reconstruct the full state
         w_reconstructed = decode_rbf_global(y, W_global, q_p_train, V, Vbar, epsilon, scaler, kernel_type, echo_level=0)
 
@@ -1205,12 +1108,16 @@ def inviscid_burgers_pod_rbf_2D_global_ecsw(grid_x, grid_y, w0, dt, num_steps, m
 
     return red_coords, (num_its, jac_time, res_time, ls_time)
 
-def inviscid_burgers_pod_rbf_2D_global_ecsw_no_norm(grid_x, grid_y, w0, dt, num_steps, mu, basis, basis2,
-                                            W_global, q_p_train, q_s_train, weights, epsilon, q_snaps, kernel_type='gaussian'):
+def inviscid_burgers_pod_gp_2D_ecsw(
+    grid_x, grid_y, w0, dt, num_steps, mu,
+    basis, basis2,
+    gp_model,           # CHANGED: replaces W_global
+    weights,
+    scaler,             # CHANGED: keep for q_p normalization
+    q_snaps
+):
     """
-    Use a first-order Godunov spatial discretization and a second-order trapezoid rule
-    time integrator to solve an LSPG manifold PROM for a parameterized inviscid 2D Burgers'
-    problem with a source term, using global RBF interpolation with ECSW weights.
+    Adaptation of the RBF-based M-ROM to a GP-based M-ROM for 2D inviscid Burgers with ECSW.
 
     Parameters:
     - grid_x, grid_y: Spatial grids.
@@ -1218,27 +1125,25 @@ def inviscid_burgers_pod_rbf_2D_global_ecsw_no_norm(grid_x, grid_y, w0, dt, num_
     - dt: Time step size.
     - num_steps: Number of time steps.
     - mu: List of parameters [mu1, mu2].
-    - basis: POD basis (U_p).
-    - basis2: Secondary basis (U_s).
-    - W_global: Precomputed global RBF weights matrix.
-    - q_p_train: Training data for principal modes.
-    - q_s_train: Training data for secondary modes.
+    - basis: Primary POD basis (analogous to U_p).
+    - basis2: Secondary POD basis (analogous to U_s).
+    - gp_model: Trained Gaussian Process model (multi-output).
     - weights: ECSW weights for sampled nodes.
-    - epsilon: RBF parameter.
-    - kernel_type: RBF kernel type ('gaussian', 'imq', 'linear', 'multiquadric').
+    - scaler: MinMaxScaler for q_p (if used for normalizing the primary coordinates).
 
     Returns:
     - red_coords: Reduced coordinates over time.
     - stats: Tuple (num_iterations, jac_time, res_time, ls_time).
     """
-    
-    # stuff for operators
+
+    # -------------------------------------------------------------------------
+    # The ECSW + operator assembly logic remains identical to the RBF version.
+    # -------------------------------------------------------------------------
     Dxec, Dyec, JDxec, JDyec, Eye = get_ops(grid_x, grid_y)
     Eye = Eye.tolil()
     JDxec = JDxec.tolil()
     JDyec = JDyec.tolil()
 
-    # Mesh sampling based on ECSW weights
     sample_inds = np.where(weights != 0)[0]
     augmented_sample = generate_augmented_mesh(grid_x, grid_y, sample_inds)
 
@@ -1258,9 +1163,12 @@ def inviscid_burgers_pod_rbf_2D_global_ecsw_no_norm(grid_x, grid_y, w0, dt, num_
     res_time = 0
     ls_time = 0
 
-    # Initial conditions
-    y0 = basis.T @ w0  # Project w0 onto the POD basis
-    w0_reconstructed = decode_rbf_global_no_norm(y0, W_global, q_p_train, basis, basis2, epsilon, kernel_type)
+    # -------------------------------------------------------------------------
+    # Initial condition: project onto POD basis, then decode with GP
+    # -------------------------------------------------------------------------
+    y0 = basis.T @ w0  # Project w0 onto the primary POD basis
+    # CHANGED: replaced decode_rbf_global(...) with decode_gp(...)
+    w0_reconstructed = decode_gp(y0, gp_model, basis, basis2, scaler)
 
     nred = y0.shape[0]
     snaps = np.zeros((w0_reconstructed.shape[0], num_steps + 1))
@@ -1271,22 +1179,27 @@ def inviscid_burgers_pod_rbf_2D_global_ecsw_no_norm(grid_x, grid_y, w0, dt, num_
     wp = w0_reconstructed.copy()
     yp = y0.copy()
 
-    # Reduced basis for sampled nodes
-    idx = np.concatenate((augmented_sample, int(w0_reconstructed.shape[0] / 2) + augmented_sample))
+    idx = np.concatenate((
+        augmented_sample,
+        int(w0_reconstructed.shape[0] / 2) + augmented_sample
+    ))
     wp = wp[idx]
 
     V = basis[idx, :]
     Vbar = basis2[idx, :]
 
-    # Decode function using global RBF
+    # -------------------------------------------------------------------------
+    # GP-based decode/jac functions
+    # -------------------------------------------------------------------------
+    # CHANGED: 'decode_func' references decode_gp instead of decode_rbf_global
     def decode_func(x):
-        return decode_rbf_global_no_norm(x, W_global, q_p_train, V, Vbar, epsilon, kernel_type, echo_level=0)
+        return decode_gp(x, gp_model, V, Vbar, scaler)
 
-    # Jacobian function for global RBF
-    def jac_rbf_func(x):
-        return jac_rbf_global_no_norm(x, W_global, q_p_train, q_s_train, V, Vbar, epsilon, kernel_type, echo_level=0)
+    # CHANGED: new GP-based Jacobian function; in RBF approach we had jac_rbf_global
+    def jac_gp_func(x):
+        return jac_gp(x, gp_model, V, Vbar, scaler)
 
-    print(f"Running POD-RBF M-ROM of size {nred} for mu1={mu[0]}, mu2={mu[1]}")
+    print(f"Running POD-GP M-ROM of size {nred} for mu1={mu[0]}, mu2={mu[1]}")
     lbc = None
     src = None
     dx = grid_x[1:] - grid_x[:-1]
@@ -1294,14 +1207,16 @@ def inviscid_burgers_pod_rbf_2D_global_ecsw_no_norm(grid_x, grid_y, w0, dt, num_
     xc = (grid_x[1:] + grid_x[:-1]) / 2
     shp = (dy.size, dx.size)
 
-    # Initialize boundary conditions and source terms
+    # -------------------------------------------------------------------------
+    # Boundary conditions, source initialization
+    # -------------------------------------------------------------------------
     if lbc is None:
         lbc = np.zeros_like(sample_inds, dtype=np.float64)
         t = np.unravel_index(sample_inds, shp)
         for i, (r, c) in enumerate(zip(t[0], t[1])):
             if c == 0:
                 lbc[i] = 0.5 * dt * mu[0] ** 2 / dx[0]
-    
+
     if src is None:
         src = dt * 0.02 * np.exp(mu[1] * xc)
         src = np.tile(src, dy.size)
@@ -1309,33 +1224,46 @@ def inviscid_burgers_pod_rbf_2D_global_ecsw_no_norm(grid_x, grid_y, w0, dt, num_
 
     wall_clock_time = 0.0
 
-    # Time-stepping loop
+    # -------------------------------------------------------------------------
+    # Time-stepping loop with ECSW
+    # -------------------------------------------------------------------------
     for i in range(num_steps):
+
         def res(w):
-            return inviscid_burgers_res2D_ecsw(w, grid_x, grid_y, dt, wp, mu, JDxec, JDyec, sample_inds, augmented_sample, lbc, src)
+            return inviscid_burgers_res2D_ecsw(
+                w, grid_x, grid_y, dt, wp, mu,
+                JDxec, JDyec, sample_inds, augmented_sample,
+                lbc, src
+            )
 
         def jac(w):
-            return inviscid_burgers_exact_jac2D_ecsw(w, dt, JDxec, JDyec, Eye, sample_inds, augmented_sample)
+            return inviscid_burgers_exact_jac2D_ecsw(
+                w, dt, JDxec, JDyec, Eye,
+                sample_inds, augmented_sample
+            )
 
         print(f" ... Working on timestep {i}")
         t0 = time.time()
 
-        # Solve using Gauss-Newton for POD-RBF
-        y, resnorms, times = gauss_newton_pod_rbf_ecsw(
-            res, jac, yp, decode_func, jac_rbf_func, sample_inds, augmented_sample, sample_weights
+        # CHANGED: now calls a GP-based Gauss-Newton solver
+        # Original was gauss_newton_pod_rbf_ecsw
+        y, resnorms, times = gauss_newton_pod_gp_ecsw(
+            res, jac, yp, decode_func, jac_gp_func,
+            sample_inds, augmented_sample, sample_weights
         )
+
         jac_timep, res_timep, ls_timep = times
         num_its += len(resnorms)
         jac_time += jac_timep
         res_time += res_timep
         ls_time += ls_timep
 
-        if i % 50 == 5894 or i < 0:
+        if i % 1000594 == 0 or i < 0:
             print(f"This step was given: {i}")
             y = q_snaps[:,i+1]
 
-        # Reconstruct the full state
-        w_reconstructed = decode_rbf_global_no_norm(y, W_global, q_p_train, V, Vbar, epsilon, kernel_type, echo_level=0)
+        # CHANGED: decode the new solution with GP
+        w_reconstructed = decode_gp(y, gp_model, V, Vbar, scaler)
 
         red_coords[:, i + 1] = y
         wp = w_reconstructed
@@ -1449,37 +1377,6 @@ def decode_rbf_global(x, W_global, q_p_train, basis, basis2, epsilon, scaler, ke
     # Reconstruct the full state vector
     return basis @ x + basis2 @ q_s_pred
 
-def decode_rbf_global_no_norm(x, W_global, q_p_train, basis, basis2, epsilon, kernel_type='gaussian', echo_level=0):
-    """
-    Reconstruct the full state vector using POD and global RBF interpolation.
-
-    Parameters:
-    - x: Reduced coordinates.
-    - W_global: Precomputed global RBF weights.
-    - q_p_train: Training data for principal modes.
-    - basis, basis2: POD matrices for reconstruction.
-    - epsilon: RBF shape parameter.
-    - kernel_type: RBF type ('gaussian', 'imq', 'linear', 'multiquadric').
-    - echo_level: Verbosity level.
-
-    Returns:
-    - Full state vector.
-    """
-    # Perform global RBF interpolation
-    if kernel_type == 'gaussian':
-        q_s_pred = RBFUtils.interpolate_with_rbf_global_gaussian_no_norm(x, q_p_train, W_global, epsilon, echo_level)
-    elif kernel_type == 'imq':
-        q_s_pred = RBFUtils.interpolate_with_rbf_global_imq_no_norm(x, q_p_train, W_global, epsilon, echo_level)
-    elif kernel_type == 'linear':
-        q_s_pred = RBFUtils.interpolate_with_rbf_global_linear_no_norm(x, q_p_train, W_global, echo_level)
-    elif kernel_type == 'multiquadric':
-        q_s_pred = RBFUtils.interpolate_with_rbf_global_multiquadric_no_norm(x, q_p_train, W_global, epsilon, echo_level)
-    else:
-        raise ValueError(f"Unsupported kernel type: {kernel_type}")
-
-    # Reconstruct the full state vector
-    return basis @ x + basis2 @ q_s_pred
-
 def jac_rbf_global(x, W_global, q_p_train, q_s_train, basis, basis2, epsilon, scaler, kernel_type='gaussian', echo_level = 0):
     """
     Compute the full Jacobian V = U_p + U_s * J_RBF (global).
@@ -1517,38 +1414,131 @@ def jac_rbf_global(x, W_global, q_p_train, q_s_train, basis, basis2, epsilon, sc
     # Compute the full Jacobian
     return basis + basis2 @ rbf_jacobian
 
-def jac_rbf_global_no_norm(x, W_global, q_p_train, q_s_train, basis, basis2, epsilon, kernel_type='gaussian', echo_level = 0):
+def decode_gp(x, gp_model, basis, basis2, scaler, echo_level=0):
     """
-    Compute the full Jacobian V = U_p + U_s * J_RBF (global).
+    Reconstruct the full state vector using POD and a trained Gaussian Process (GP).
 
     Parameters:
-    - x: Reduced coordinates.
-    - W_global: Precomputed global RBF weights matrix.
-    - q_p_train: Training data for principal modes (q_p).
-    - q_s_train: Training data for secondary modes (q_s).
-    - basis: U_p matrix from POD.
-    - basis2: U_s matrix from POD.
-    - epsilon: Shape parameter for RBF.
-    - kernel_type: Type of RBF kernel to use ('gaussian', 'imq', 'linear', 'multiquadric').
+    ----------
+    x : ndarray
+        Primary-mode reduced coordinates of shape (r_p,) -- i.e., the "primary" part.
+    gp_model : GaussianProcessRegressor (multi-output)
+        Trained GP model mapping primary coords -> secondary coords.
+    basis : ndarray
+        Primary POD basis (shape: [n_dofs, r_p]).
+    basis2 : ndarray
+        Secondary POD basis (shape: [n_dofs, r_s]).
+    scaler : MinMaxScaler
+        Scaler used for normalizing primary coordinates.
+    echo_level : int, optional
+        Verbosity level (unused here, but kept for consistency).
 
     Returns:
-    - Full Jacobian V with respect to reduced coordinates.
+    --------
+    full_state : ndarray
+        Reconstructed full state vector of shape (n_dofs,).
     """
 
-    # Compute RBF Jacobian globally
-    if kernel_type == 'gaussian':
-        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_gaussian_no_norm(x.reshape(1, -1), q_p_train, W_global, epsilon, echo_level=echo_level)
-    elif kernel_type == 'imq':
-        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_imq_no_norm(x.reshape(1, -1), q_p_train, W_global, epsilon, echo_level=echo_level)
-    elif kernel_type == 'linear':
-        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_linear_no_norm(x.reshape(1, -1), q_p_train, W_global, epsilon, echo_level=echo_level)
-    elif kernel_type == 'multiquadric':
-        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_multiquadric_no_norm(x.reshape(1, -1), q_p_train, W_global, epsilon, echo_level=echo_level)
-    else:
-        raise ValueError(f"Unsupported kernel type: {kernel_type}")
+    # 1) Reshape and scale primary coordinates
+    #    The model expects a 2D array: (1, r_p)
+    x_in = x.reshape(1, -1)
+    x_scaled = scaler.transform(x_in)
 
-    # Compute the full Jacobian
-    return basis + basis2 @ rbf_jacobian
+    # 2) Predict secondary POD coords with the GP model
+    #    gp_model.predict(...) returns shape (1, r_s)
+    q_s_pred = gp_model.predict(x_scaled).flatten()
+
+    # 3) Reconstruct the full state = basis * primary + basis2 * secondary
+    full_state = basis @ x + basis2 @ q_s_pred
+
+    return full_state
+
+def jac_gp(x, gp_model, basis, basis2, scaler,
+                   fd_eps=1e-6, echo_level=0):
+    """
+    Compute the full Jacobian V = U_p + U_s * d(q_s)/d(x)
+    for a POD-GP method, where q_s = GP(q_p).
+
+    This function uses a central-difference scheme to approximate the partial
+    derivatives of the GP model output (secondary coordinates) w.r.t. the
+    (original, unscaled) primary coordinates x. It correctly applies the
+    chain rule for an internal scaling transform x_scaled.
+
+    Parameters
+    ----------
+    x : ndarray of shape (r_p,)
+        The current reduced primary POD coordinates (unscaled).
+    gp_model : GaussianProcessRegressor (multi-output)
+        Trained GP model mapping primary coords -> secondary coords.
+        This model expects scaled inputs.
+    basis : ndarray of shape (n_dofs, r_p)
+        Primary POD basis, U_p.
+    basis2 : ndarray of shape (n_dofs, r_s)
+        Secondary POD basis, U_s.
+    scaler : MinMaxScaler (or similar)
+        Scaler used to normalize the primary coordinates. 
+        Must match the one used when training gp_model.
+
+        In scikit-learn, if
+          x_scaled = (x_original - min_) * scale_,
+        then scale_ is 1 / (x_max - x_min) (times 2 if you're using [-1,1] etc.).
+        We must apply the chain rule to convert derivative in scaled space
+        to the derivative w.r.t. original x.
+
+    fd_eps : float, optional
+        Step size for central differencing in scaled space.
+    echo_level : int, optional
+        Verbosity level (unused here, but kept for consistency).
+
+    Returns
+    -------
+    full_jac : ndarray of shape (n_dofs, r_p)
+        The Jacobian of the decoded full state w.r.t. the original (unscaled)
+        reduced primary coords. i.e., V = basis + basis2 @ (d q_s / d x).
+    """
+
+    # 1) Reshape (r_p,) => (1, r_p) and scale x
+    x_in = x.reshape(1, -1)
+    x_scaled = scaler.transform(x_in)  # shape: (1, r_p)
+
+    # We'll also retrieve the scaling factors for chain rule:
+    # scale_ is shape (r_p,)
+    scale_factors = scaler.scale_
+
+    # 2) Baseline prediction (not strictly needed for central difference, but good for reference)
+    q_s_base = gp_model.predict(x_scaled).ravel()  # shape (r_s,)
+
+    r_p = x_in.shape[1]
+    r_s = q_s_base.size
+
+    # 3) Allocate array for partial derivatives of q_s: shape (r_s, r_p)
+    dq_s_dxp = np.zeros((r_s, r_p))
+
+    # 4) Central difference for each coordinate in scaled space
+    half_eps = 0.5 * fd_eps
+    for j in range(r_p):
+        # We move in scaled-space by +/- half_eps:
+        x_plus  = x_scaled.copy()
+        x_minus = x_scaled.copy()
+
+        x_plus[0, j]  += half_eps
+        x_minus[0, j] -= half_eps
+
+        q_s_plus  = gp_model.predict(x_plus).ravel()
+        q_s_minus = gp_model.predict(x_minus).ravel()
+
+        # Central difference in scaled space:
+        dq_s_dxp_scaled = (q_s_plus - q_s_minus) / (2.0 * half_eps)
+
+        # Now apply chain rule to get derivative w.r.t. unscaled x_j:
+        # d(q_s)/d(x_j) = d(q_s)/d(x_scaled_j) * d(x_scaled_j)/d(x_j)
+        # where d(x_scaled_j)/d(x_j) = scale_factors[j]
+        dq_s_dxp[:, j] = dq_s_dxp_scaled * scale_factors[j]
+
+    # 5) Full Jacobian = U_p + U_s @ (d q_s / d x)
+    full_jac = basis + basis2 @ dq_s_dxp
+
+    return full_jac
 
 def newton_raphson(func, jac, x0, max_its=20, relnorm_cutoff=1e-12):
     """
@@ -2006,7 +1996,7 @@ def gauss_newton_pod_rbf_ecsw(func, jac, y0, decode_rbf, jac_rbf,
         # Compute current residual norm
         resnorm = np.linalg.norm(func(w) * weights)
         resnorms.append(resnorm)
-        
+
         # Check for convergence
         if resnorm / init_norm < relnorm_cutoff:
             break
@@ -2040,6 +2030,110 @@ def gauss_newton_pod_rbf_ecsw(func, jac, y0, decode_rbf, jac_rbf,
 
         # Reconstruct the full state with updated reduced coordinates
         w = decode_rbf(y)
+
+    print(f'{i} iterations: {resnorm / init_norm:.2e} relative norm')
+    
+    return y, resnorms, (jac_time, res_time, ls_time)
+
+def gauss_newton_pod_gp_ecsw(func, jac, y0, decode_gp, jac_gp,
+                             sample_inds, augmented_sample, weights,
+                             max_its=10, relnorm_cutoff=1e-5,
+                             min_delta=0.1):
+    """
+    Gauss-Newton solver for the POD-GP approach using ECSW.
+    
+    Parameters
+    ----------
+    func : callable
+        Residual function for the HDM. E.g., inviscid_burgers_res2D_ecsw(...).
+    jac : callable
+        Jacobian function for the HDM. E.g., inviscid_burgers_exact_jac2D_ecsw(...).
+    y0 : ndarray
+        Initial guess for the reduced (primary) coordinates.
+    decode_gp : callable
+        Function to decode reduced coordinates to the full state using POD + GP.
+    jac_gp : callable
+        Function to compute the Jacobian of the POD-GP reconstruction.
+    sample_inds : ndarray
+        Indices of sampled ECSW nodes.
+    augmented_sample : ndarray
+        Augmented sample of nodes from ECSW.
+    weights : ndarray
+        ECSW weights for sampled nodes.
+    max_its : int, optional
+        Maximum number of Gauss-Newton iterations. Default is 10.
+    relnorm_cutoff : float, optional
+        Relative residual norm cutoff for convergence. Default is 1e-5.
+    min_delta : float, optional
+        Minimum relative improvement in residual norm to continue. Default is 0.1.
+    
+    Returns
+    -------
+    y : ndarray
+        Updated reduced coordinates after convergence.
+    resnorms : list of float
+        Residual norms at each iteration.
+    (jac_time, res_time, ls_time) : tuple of floats
+        Timing metrics for Jacobian, residual, and least-squares solve.
+    """
+
+    # Initialize timing counters
+    jac_time = 0.0
+    res_time = 0.0
+    ls_time = 0.0
+
+    # Initialize reduced coordinates
+    y = y0.copy()
+
+    # Reconstruct the full state from initial reduced coordinates
+    w = decode_gp(y)
+
+    # Weights vector for ECSW (duplicated for two components if needed)
+    weights = np.concatenate((weights, weights))
+
+    # Calculate the initial residual norm
+    init_norm = np.linalg.norm(func(w) * weights)
+    resnorm = init_norm
+    resnorms = []
+
+    for i in range(max_its):
+        # Compute current residual norm
+        resnorm = np.linalg.norm(func(w) * weights)
+        resnorms.append(resnorm)
+
+        # Check for convergence
+        if resnorm / init_norm < relnorm_cutoff:
+            break
+
+        # Check for minimal improvement
+        if (len(resnorms) > 1) and (abs((resnorms[-2] - resnorms[-1]) / resnorms[-2]) < min_delta):
+            break
+
+        # Time Jacobian computation (HDM + GP)
+        t0 = time.time()
+        J = jac(w)       # HDM part
+        V = jac_gp(y)    # POD-GP part
+        jac_time += time.time() - t0
+
+        # Time residual computation
+        t0 = time.time()
+        f = func(w)
+        fw = f * weights
+        res_time += time.time() - t0
+
+        # Time least-squares solve
+        t0 = time.time()
+        JV = J.dot(V)
+        dw = sp.spdiags(weights, 0, weights.size, weights.size)  # diagonal matrix with ECSW weights
+        JVw = dw @ JV
+        dy, lst_res, rank, sval = np.linalg.lstsq(JVw, -fw, rcond=None)
+        ls_time += time.time() - t0
+
+        # Update reduced coordinates
+        y += dy
+
+        # Reconstruct the full state with updated reduced coordinates
+        w = decode_gp(y)
 
     print(f'{i} iterations: {resnorm / init_norm:.2e} relative norm')
     
@@ -2295,11 +2389,10 @@ def inviscid_burgers_exact_jac2D(w, dt, JDxec, JDyec, Eye):
 
 def inviscid_burgers_exact_jac2D_ecsw(w, dt, JDxec, JDyec, Eye, sample_inds, augmented_inds):
     u, v = np.split(w, 2)
-    #if u.size > augmented_inds.size:
-    #    ud, vd = 0.5 * dt * sp.diags(u[augmented_inds]), 0.5 * dt * sp.diags(v[augmented_inds])
-    #else:
-    #    ud, vd = 0.5 * dt * sp.diags(u), 0.5 * dt * sp.diags(v)
-    ud, vd = 0.5 * dt * sp.diags(u), 0.5 * dt * sp.diags(v)
+    if u.size > augmented_inds.size:
+        ud, vd = 0.5 * dt * sp.diags(u[augmented_inds]), 0.5 * dt * sp.diags(v[augmented_inds])
+    else:
+        ud, vd = 0.5 * dt * sp.diags(u), 0.5 * dt * sp.diags(v)
     ul = (JDxec@ud + 0.5*JDyec@vd)
     ur = (0.5*JDyec@ud)
     ll = (0.5*JDxec@vd)
@@ -2592,6 +2685,125 @@ def compute_ECSW_training_matrix_2D_rbf_global(snaps, prev_snaps, basis, basis2,
             # Contributions from both components (e.g., u and v)
             C[row_start:row_end, inode] = (
                 ires[inode] * Wi[inode, :] + ires[inode + n_hdm] * Wi[inode + n_hdm, :]
+            )
+
+    return C
+
+def compute_ECSW_training_matrix_2D_gp(snaps, prev_snaps, basis, basis2,
+                                       gp_model,
+                                       res, jac,
+                                       grid_x, grid_y, dt, mu,
+                                       scaler,
+                                       max_local_its=10,
+                                       local_tol=1e-2):
+    """
+    Assembles the ECSW hyper-reduction training matrix for the POD-GP model.
+    Running a non-negative least squares algorithm with an early stopping
+    criterion on these matrices will give the sample nodes and weights.
+
+    Parameters
+    ----------
+    snaps : ndarray of shape (n_hdm_total, n_snaps)
+        Snapshot matrix (HDM space).
+    prev_snaps : ndarray of shape (n_hdm_total, n_snaps)
+        The previous time-step snapshots (for time marching).
+    basis : ndarray of shape (n_hdm_total, r_p)
+        Primary POD basis (U_p).
+    basis2 : ndarray of shape (n_hdm_total, r_s)
+        Secondary POD basis (U_s).
+    gp_model : GaussianProcessRegressor (multi-output)
+        Trained GP mapping primary coords -> secondary coords.
+    res : callable
+        Residual function for the system: e.g., `res(w, grid_x, grid_y, dt, uprev, mu, Dxec, Dyec)`.
+    jac : callable
+        Jacobian function for the system: e.g., `jac(w, dt, JDxec, JDyec, Eye)`.
+    grid_x, grid_y : ndarray
+        Spatial grids in x and y directions.
+    dt : float
+        Time step size.
+    mu : list or tuple of floats
+        Parameters [mu1, mu2].
+    scaler : MinMaxScaler
+        Scaler used to normalize primary POD coords during GP training.
+    max_local_its : int, optional
+        Maximum Gauss-Newton iterations for local reconstruction refinement. Default is 10.
+    local_tol : float, optional
+        Tolerance for local reconstruction refinement. Default is 1e-2.
+
+    Returns
+    -------
+    C : ndarray of shape (n_pod * n_snaps, n_hdm)
+        ECSW training matrix used for hyper-reduction.
+    """
+
+    n_hdm_total, n_snaps = snaps.shape
+    n_hdm = n_hdm_total // 2  # e.g., for 2D (u,v) system
+    n_pod = basis.shape[1]
+
+    # The ECSW training matrix
+    C = np.zeros((n_pod * n_snaps, n_hdm))
+
+    # Precompute operators (HDM-related)
+    Dxec, Dyec, JDxec, JDyec, Eye = get_ops(grid_x, grid_y)
+
+    for isnap in range(n_snaps):
+        # Extract current and previous snapshots
+        snap = snaps[:, isnap]
+        uprev = prev_snaps[:, isnap]
+
+        # Initial guess for reduced coords by projection onto primary basis
+        y0 = basis.T @ snap  # shape: (n_pod,)
+
+        # Small Gauss-Newton loop to refine y0 for a better local reconstruction
+        w_recon = decode_gp(y0, gp_model, basis, basis2, scaler)
+        init_res = np.linalg.norm(w_recon - snap)
+        approx_res = init_res
+        y = y0.copy()
+        num_it = 0
+
+        print(f"Initial reconstruction residual: {init_res / np.linalg.norm(snap):.2e}")
+
+        while abs(approx_res / init_res) > local_tol and num_it < max_local_its:
+            w_recon = decode_gp(y, gp_model, basis, basis2, scaler)
+            res_recon = w_recon - snap  # how far we are from snapshot
+
+            # Jacobian of the reconstruction (w.r.t. y)
+            Jf = jac_gp(y, gp_model, basis, basis2, scaler)
+
+            # Solve linear system Jf^T Jf * dy = Jf^T res_recon (least-squares)
+            JJ = Jf.T @ Jf
+            Jr = Jf.T @ res_recon
+            dy, _, _, _ = np.linalg.lstsq(JJ, Jr, rcond=None)
+
+            y -= dy
+            w_recon = decode_gp(y, gp_model, basis, basis2, scaler)
+            approx_res = np.linalg.norm(w_recon - snap)
+            num_it += 1
+
+        final_res = np.linalg.norm(w_recon - snap)
+        print(f"Final reconstruction residual: {final_res / np.linalg.norm(snap):.2e}")
+
+        # Now compute the HDM residual + Jacobian at w_recon
+        ires = res(w_recon, grid_x, grid_y, dt, uprev, mu, Dxec, Dyec)
+        J_hd = jac(w_recon, dt, JDxec, JDyec, Eye)
+
+        # Compute the Jacobian of the reconstruction for the final y
+        V = jac_gp(y, gp_model, basis, basis2, scaler)
+
+        # Wi = J_hd @ V => the linear sensitivity of the HDM residual w.r.t y
+        Wi = J_hd @ V
+
+        # Fill the ECSW training matrix
+        # "ires" has shape (n_hdm_total,) => we split in the 2D sense
+        for inode in range(n_hdm):
+            row_start = isnap * n_pod
+            row_end = row_start + n_pod
+
+            # Combine contributions from the two state components
+            # i.e. u- and v-component, typically found at inode, inode+n_hdm
+            C[row_start:row_end, inode] = (
+                ires[inode] * Wi[inode, :] +
+                ires[inode + n_hdm] * Wi[inode + n_hdm, :]
             )
 
     return C
