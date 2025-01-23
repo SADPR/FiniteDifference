@@ -232,15 +232,18 @@ def main():
     #          RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e3)) + \
     #          WhiteKernel(noise_level=1e-5, noise_level_bounds='fixed')
     #
-    kernel = ConstantKernel(constant_value=1.0, constant_value_bounds='fixed') * \
-             Matern(length_scale=1.0, length_scale_bounds=(1e-2, 1e3), nu=1.5) + \
-             WhiteKernel(noise_level=1e-5, noise_level_bounds='fixed')
+    #kernel = ConstantKernel(constant_value=1.0, constant_value_bounds='fixed') * \
+    #         Matern(length_scale=1.0, length_scale_bounds=(1e-2, 1e3), nu=1.5) + \
+    #         WhiteKernel(noise_level=1e-5, noise_level_bounds='fixed')
+    kernel = ConstantKernel(constant_value=1.0, constant_value_bounds=(1e-3, 1e3)) \
+         * Matern(length_scale=1.0, length_scale_bounds=(1e-3, 1e4), nu=1.5) \
+         + WhiteKernel(noise_level=1e-3, noise_level_bounds=(1e-6, 1e-1))
     # -------------------------------------------------------------------------
 
     # Instantiate the base GP regressor
     base_gp = GaussianProcessRegressor(
         kernel=kernel,
-        n_restarts_optimizer=2,
+        n_restarts_optimizer=5,
         optimizer='fmin_l_bfgs_b',
         normalize_y=False
     )

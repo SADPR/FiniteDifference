@@ -224,7 +224,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
         ax2_anim.legend()
         ax1_anim.set_title(f'Timestep = {frame_idx}')
 
-    save_gif = True
+    save_gif = False
     if save_gif:
         anim = animation.FuncAnimation(
             fig_anim, animate_func,
@@ -242,4 +242,4 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
 
 
 if __name__ == "__main__":
-    main(mu1=4.75, mu2=0.02, compute_ecsw=False, save_npy=True, save_plot=True)
+    main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=True, save_plot=True)

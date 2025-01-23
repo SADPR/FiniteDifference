@@ -937,7 +937,7 @@ def inviscid_burgers_pod_rbf_2D_global(grid_x, grid_y, w0, dt, num_steps, mu, ba
 
     # Jacobian function for global RBF
     def jac_rbf_func(x):
-        return jac_rbf_global(x, W_global, q_p_train, q_s_train, basis, basis2, epsilon, scaler, kernel_type)
+        return jac_rbf_global(x, W_global, q_p_train, q_s_train, basis, basis2, epsilon, scaler, kernel_type, echo_level=0)
 
     print(f"Running POD-RBF Global of size {nred} for mu1={mu[0]}, mu2={mu[1]}")
 
@@ -1193,11 +1193,11 @@ def inviscid_burgers_pod_gp_2D_ecsw(
     # -------------------------------------------------------------------------
     # CHANGED: 'decode_func' references decode_gp instead of decode_rbf_global
     def decode_func(x):
-        return decode_gp(x, gp_model, V, Vbar, scaler)
+        return decode_gp(x, gp_model, V, Vbar, scaler, echo_level=0)
 
     # CHANGED: new GP-based Jacobian function; in RBF approach we had jac_rbf_global
     def jac_gp_func(x):
-        return jac_gp(x, gp_model, V, Vbar, scaler)
+        return jac_gp(x, gp_model, V, Vbar, scaler, echo_level=0)
 
     print(f"Running POD-GP M-ROM of size {nred} for mu1={mu[0]}, mu2={mu[1]}")
     lbc = None
@@ -1414,7 +1414,7 @@ def jac_rbf_global(x, W_global, q_p_train, q_s_train, basis, basis2, epsilon, sc
     # Compute the full Jacobian
     return basis + basis2 @ rbf_jacobian
 
-def decode_gp(x, gp_model, basis, basis2, scaler, echo_level=0):
+def decode_gp(x, gp_model, basis, basis2, scaler, use_custom_predict=True, echo_level=0):
     """
     Reconstruct the full state vector using POD and a trained Gaussian Process (GP).
 
@@ -1439,21 +1439,33 @@ def decode_gp(x, gp_model, basis, basis2, scaler, echo_level=0):
         Reconstructed full state vector of shape (n_dofs,).
     """
 
-    # 1) Reshape and scale primary coordinates
-    #    The model expects a 2D array: (1, r_p)
     x_in = x.reshape(1, -1)
     x_scaled = scaler.transform(x_in)
 
-    # 2) Predict secondary POD coords with the GP model
-    #    gp_model.predict(...) returns shape (1, r_s)
-    q_s_pred = gp_model.predict(x_scaled).flatten()
+    t0 = time.time()
 
-    # 3) Reconstruct the full state = basis * primary + basis2 * secondary
+    if not use_custom_predict:
+        # Standard scikit-learn approach
+        q_s_pred = gp_model.predict(x_scaled).ravel()
+    else:
+        # Custom approach
+        X_train_ = gp_model.X_train_
+        alpha_   = gp_model.alpha_
+        kernel_  = gp_model.kernel_
+
+        k_vec = kernel_(X_train_, x_scaled).ravel()  # shape: (N,)
+        q_s_pred = k_vec @ alpha_                    # shape: (r_s,)
+
+    if echo_level > 0:
+        print(f"Time to interpolate q_s: {time.time() - t0:.6f} seconds")
+
+    # Now combine primary coords x with predicted secondary coords
     full_state = basis @ x + basis2 @ q_s_pred
 
     return full_state
 
-def jac_gp(x, gp_model, basis, basis2, scaler,
+
+def jac_gp_central_difference(x, gp_model, basis, basis2, scaler,
                    fd_eps=1e-6, echo_level=0):
     """
     Compute the full Jacobian V = U_p + U_s * d(q_s)/d(x)
@@ -1508,6 +1520,7 @@ def jac_gp(x, gp_model, basis, basis2, scaler,
     # 2) Baseline prediction (not strictly needed for central difference, but good for reference)
     q_s_base = gp_model.predict(x_scaled).ravel()  # shape (r_s,)
 
+    t0 = time.time()
     r_p = x_in.shape[1]
     r_s = q_s_base.size
 
@@ -1534,9 +1547,279 @@ def jac_gp(x, gp_model, basis, basis2, scaler,
         # d(q_s)/d(x_j) = d(q_s)/d(x_scaled_j) * d(x_scaled_j)/d(x_j)
         # where d(x_scaled_j)/d(x_j) = scale_factors[j]
         dq_s_dxp[:, j] = dq_s_dxp_scaled * scale_factors[j]
+    
+    if echo_level > 0:
+        print(f"Total time for Jacobian computation: {time.time() - t0:.6f} seconds")
 
     # 5) Full Jacobian = U_p + U_s @ (d q_s / d x)
     full_jac = basis + basis2 @ dq_s_dxp
+
+    return full_jac
+
+def jac_gp(
+    x, gp_model, basis, basis2, scaler,
+    fd_eps=1e-6, echo_level=0,
+    use_custom_predict=True
+):
+    """
+    Forward-difference approximation in a loop (not batched).
+    Slower than batch but uses half the calls of central difference.
+
+    Now instrumented with additional timing prints to diagnose performance.
+    The 'use_custom_predict' parameter lets you switch between scikit-learn's 
+    gp_model.predict(...) or a custom approach (k_vec @ alpha_) for each step.
+    """
+
+    import time
+
+    # Measure overall start time
+    total_start_time = time.time()
+
+    # --- Step 1: Reshape and scale x -----------------------------------------
+    step1_start = time.time()
+    x_in = x.reshape(1, -1)
+    x_scaled = scaler.transform(x_in)
+    scale_factors = scaler.scale_
+    step1_time = time.time() - step1_start
+
+    # --- Step 2: Baseline prediction -----------------------------------------
+    step2_start = time.time()
+    if not use_custom_predict:
+        # Standard scikit-learn approach
+        q_s_base = gp_model.predict(x_scaled).ravel()
+    else:
+        # Custom approach: read gp internals once outside the loop
+        X_train_ = gp_model.X_train_
+        alpha_   = gp_model.alpha_
+        kernel_  = gp_model.kernel_
+        k_vec = kernel_(X_train_, x_scaled).ravel()
+        q_s_base = k_vec @ alpha_  # shape (r_s,)
+    step2_time = time.time() - step2_start
+
+    # --- Step 3: Forward difference loop -------------------------------------
+    step3_start = time.time()
+    r_p = x_in.shape[1]
+    r_s = q_s_base.size
+    dq_s_dxp = np.zeros((r_s, r_p))
+
+    iteration_times = []
+
+    # If using the custom approach, let's fetch gp internals once
+    if use_custom_predict:
+        X_train_ = gp_model.X_train_
+        alpha_   = gp_model.alpha_
+        kernel_  = gp_model.kernel_
+
+    for j in range(r_p):
+        iter_start = time.time()
+        x_plus = x_scaled.copy()
+        x_plus[0, j] += fd_eps
+
+        if not use_custom_predict:
+            # Standard scikit-learn predict
+            q_s_plus = gp_model.predict(x_plus).ravel()
+        else:
+            # Custom kernel approach
+            k_vec_plus = kernel_(X_train_, x_plus).ravel()
+            q_s_plus = k_vec_plus @ alpha_
+
+        iter_time = time.time() - iter_start
+        iteration_times.append(iter_time)
+
+        dq_s_scaled = (q_s_plus - q_s_base) / fd_eps
+        dq_s_dxp[:, j] = dq_s_scaled * scale_factors[j]
+
+    step3_time = time.time() - step3_start
+
+    # --- Step 4: Combine with POD bases --------------------------------------
+    step4_start = time.time()
+    # full_jac = U_p + U_s @ (dq_s_dxp)
+    # U_p = basis, U_s = basis2
+    full_jac = basis + basis2 @ dq_s_dxp
+    step4_time = time.time() - step4_start
+
+    # --- Print times if echo_level > 0 ---------------------------------------
+    total_time = time.time() - total_start_time
+    if echo_level > 0:
+        print("[jac_gp] Timing breakdown:")
+        print(f"  Step 1 (reshape/scale): {step1_time:.6f} s")
+        print(f"  Step 2 (baseline predict): {step2_time:.6f} s")
+        print(f"  Step 3 (loop + forward diffs): {step3_time:.6f} s")
+        for i, t_iter in enumerate(iteration_times):
+            print(f"    - iteration {i}: {t_iter:.6f} s (predict call)")
+        print(f"  Step 4 (combine w/ bases): {step4_time:.6f} s")
+        print(f"  Total Jacobian time: {total_time:.6f} s")
+
+    return full_jac
+
+import numpy as np
+
+def jac_gp_analytical_in_progress(
+    x, gp_model, basis, basis2, scaler, echo_level=0
+):
+    """
+    Compute the Jacobian d(w)/d(x) for a POD-GP model with Matern(nu=1.5) kernel, 
+    using an analytical approach (no finite differences).
+
+    Parameters
+    ----------
+    x : ndarray of shape (r_p,)
+        The original (unscaled) primary POD coordinates.
+    gp_model : GaussianProcessRegressor
+        Fitted GP model with Matern(nu=1.5). We assume no sum of kernels.
+    basis : ndarray of shape (n_dofs, r_p)
+        Primary POD basis, U_p.
+    basis2 : ndarray of shape (n_dofs, r_s)
+        Secondary POD basis, U_s.
+    scaler : MinMaxScaler (or similar)
+        Used to transform x -> x_scaled. Must match training scaling.
+    echo_level : int
+        Verbosity level.
+
+    Returns
+    -------
+    full_jac : ndarray of shape (n_dofs, r_p)
+        The Jacobian of the decoded full state w.r.t. the original (unscaled) x.
+        i.e. d(w)/dx = U_p + U_s @ d(q_s)/dx.
+    """
+    import time
+    t0 = time.time()
+
+    # --- 1) Reshape & scale x
+    x_in = x.reshape(1, -1)                # (1, r_p)
+    x_scaled = scaler.transform(x_in)      # (1, r_p)
+    scale_factors = scaler.scale_          # shape (r_p,)
+
+    # --- 2) Parse kernel hyperparams
+    # We assume the kernel is Matern(...) or ConstantKernel * Matern(...)
+    kernel_ = gp_model.kernel_
+
+    # E.g. if it's "ConstantKernel(...) * Matern(length_scale=..., nu=1.5)"
+    # you might need to do kernel_.k2 for Matern or parse kernel_.get_params().
+    # For simplicity, let's suppose you do:
+    print(kernel_.get_params())
+    length_scale = kernel_.get_params()['length_scale']   # float
+    nu           = kernel_.get_params()['nu']            # should be 1.5
+    variance     = 1.0  # default amplitude
+    # If you have a ConstantKernel, might do something like:
+    # amplitude = kernel_.k1.constant_value
+    # or parse the product.
+
+    # For Matern(nu=1.5), the kernel can be:
+    # k(r) = amplitude * (1 + sqrt(3)*r/ell)*exp(-sqrt(3)*r/ell)
+    # We parse amplitude either from kernel_ or from alpha_ if needed.
+
+    # --- 3) Build the kernel vector & gradient wrt scaled x
+    #  # train data
+    X_train_ = gp_model.X_train_  # shape (N, r_p)
+    alpha_   = gp_model.alpha_    # shape (N, r_s)
+    # Possibly skip adding WhiteKernel noise since it's handled in alpha_.
+
+    # We'll define a helper to compute the derivative d(k(r))/d(x) for each row
+
+    def matern15_k_and_grad(x_sc, X_train, length_scale):
+        """
+        Returns:
+         k_vec  : shape (N,) the Matern(1.5) kernel values
+         dk_dX  : shape (N, r_p), the derivative w.r.t. scaled x
+        x_sc is shape (1, r_p)
+        """
+        # un-batch x_sc => (r_p,)
+        x_sc = x_sc.flatten()
+        N = X_train.shape[0]
+        r_p = x_sc.size
+
+        k_vec = np.zeros(N)
+        dk_dX = np.zeros((N, r_p))
+
+        # In scaled domain, we interpret distance as Euclidean in scaled space
+        # But if the kernel was fitted on scaled coords, length_scale is
+        # the param. We'll do: r_i = ||(x_sc - X_train[i])|| in scaled space
+
+        for i in range(N):
+            diff = x_sc - X_train[i]   # shape (r_p,)
+            r = np.linalg.norm(diff)   # float
+
+            if r < 1e-14:
+                # If x == X_train[i], derivative is 0 or we handle limit
+                k_vec[i] = 1.0  # for r=0 => (1 + 0)*exp(0) = 1 * amplitude
+                # derivative is 0 => no direction change if r=0
+                dk_dX[i,:] = 0.0
+            else:
+                # Matern(1.5) => k(r) = (1 + sqrt(3)*r/ell)*exp(-sqrt(3)*r/ell)
+                sqrt3 = np.sqrt(3.0)
+                z = r / length_scale
+                # k(r):
+                kr = (1.0 + sqrt3*z) * np.exp(-sqrt3*z)  # ignoring amplitude for now
+
+                # derivative wrt r:
+                # d/d(r)[ (1 + sqrt3*z)*exp(-sqrt3*z ) ] * d(z)/d(r)
+                # = ...
+                # simpler version:
+                #  d/d(r)  => derivative = ...
+                # let's do direct approach:
+                #   let A(r) = 1 + sqrt3*r/ell
+                #   let B(r) = exp(-sqrt3*r/ell)
+                #   => k(r) = A*B
+                # d(k)/dr = A'(r)*B(r) + A(r)*B'(r)
+                #   A'(r) = sqrt3/ell
+                #   B'(r) = -sqrt3/ell * exp(-sqrt3*r/ell)
+                # => derivative wrt r:
+                #   dK/dr = sqrt3/ell * B  + A * [ -sqrt3/ell B ]
+                #         = (sqrt3/ell)*B - (sqrt3/ell)*A*B
+                #         = (sqrt3/ell)*B[1 - A]
+                A = 1.0 + sqrt3*z
+                B = np.exp(-sqrt3*z)
+                dKdr = (sqrt3/length_scale)*B*(1.0 - A)
+
+                k_vec[i] = kr  # ignoring amplitude => we can multiply amplitude later
+
+                # chain rule wrt x_j: dK/dx_j = dK/dr * dr/dx_j
+                # dr/dx_j = diff[j]/r
+                grad_i = dKdr * (diff / r)
+                dk_dX[i,:] = grad_i
+
+        return k_vec, dk_dX
+
+    # Compute kernel & grad in scaled space
+    k_vec, dk_dX = matern15_k_and_grad(x_scaled, X_train_, length_scale)
+
+    # If you have an amplitude => multiply k_vec, dk_dX by amplitude
+    # e.g. amplitude = ...
+    # k_vec *= amplitude
+    # dk_dX *= amplitude
+
+    # --- 4) Predicted q_s & its derivative wrt scaled x
+    # q_s(x) = k_vec^T alpha_
+    # => shape (r_s,)
+    # derivative: d(q_s)/d(x_sc) = dk_dX^T alpha_
+    # => shape (r_s, r_p)
+    q_s = k_vec @ alpha_  # shape (r_s,)
+    dq_s_d_xscaled = dk_dX.T @ alpha_  # (r_p, N) * (N, r_s) => (r_p, r_s)
+    # but typically we want shape (r_s, r_p):
+    dq_s_d_xscaled = dq_s_d_xscaled.T  # => (r_s, r_p)
+
+    # --- 5) If your original x is unscaled, then d(q_s)/d x = d(q_s)/d x_scaled * d(x_scaled)/d x
+    # chain rule:
+    # x_scaled_j = scale_factors[j]*(x_j - min_j), ignoring offset for derivative
+    # => d(x_scaled_j)/d x_j = scale_factors[j]
+    # So we multiply each column j by scale_factors[j]
+    for j in range(dq_s_d_xscaled.shape[1]):
+        dq_s_d_xscaled[:, j] *= scale_factors[j]
+
+    # --- 6) Combine with POD bases
+    # w(x) = U_p x + U_s q_s(x)
+    # => derivative wrt x => d(w)/dx = U_p + U_s * d(q_s)/dx
+    # shape: U_p is (n_dofs, r_p), U_s is (n_dofs, r_s)
+    # dq_s_d_x is (r_s, r_p)
+    # => final is (n_dofs, r_p)
+    # Then add them
+    U_p_part = basis                     # shape (n_dofs, r_p)
+    U_s_part = basis2 @ dq_s_d_xscaled   # shape (n_dofs, r_p)
+    full_jac = U_p_part + U_s_part
+
+    if echo_level > 0:
+        print(f"[jac_gp_analytical_matern15] total time: {time.time() - t0:.6f} s")
 
     return full_jac
 

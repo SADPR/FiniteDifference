@@ -183,4 +183,4 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
 
 
 if __name__ == "__main__":
-    main(mu1=5.19, mu2=0.026, compute_ecsw=True, save_npy=False, save_plot=True)
+    main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=True)
