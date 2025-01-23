@@ -30,63 +30,88 @@ def reconstruct_snapshot_with_gp(snapshot, U_p, U_s, scaler, gp_model, print_tim
     - print_times : (bool) Print timing information if True.
     """
 
-    total_start_time = time.time()
+    # local function that does manual GP prediction
+    # using gp_model.X_train_, gp_model.alpha_, and gp_model.kernel_
+    def my_custom_predict(x_in):
+        """
+        x_in: shape (1, r_p) => a single scaled sample
+        returns shape (1, r_s)
+        """
+        predict_start = time.time()
 
-    # Step 1: Project snapshot onto primary coordinates
-    step1_start = time.time()
+        # Access internal data from gp_model
+        X_train_ = gp_model.X_train_   # shape: (N, r_p)
+        alpha_   = gp_model.alpha_     # shape: (N, r_s)
+        kernel_  = gp_model.kernel_    # the fitted kernel
+
+        # Build kernel vector: (N,) = kernel(X_train_, x_in)
+        k_vec = kernel_(X_train_, x_in).ravel()
+
+        # Multiply k_vec (1D) by alpha_ => shape (r_s,)
+        y_pred = k_vec @ alpha_  # => (r_s,)
+
+        predict_time = time.time() - predict_start
+        if print_times:
+            print(f" [my_custom_predict] single call took {predict_time:.6f} s")
+        return y_pred.reshape(1, -1)
+
+
+    start_total_time = time.time()
+
+    # Step A: Project snapshot onto primary POD coords
+    stepA_start = time.time()
     q = U_p.T @ snapshot
     q_p = q[:U_p.shape[1], :]
-    step1_time = time.time() - step1_start
+    stepA_time = time.time() - stepA_start
 
-    # Step 2: Normalize q_p
-    step2_start = time.time()
-    q_p_normalized = scaler.transform(q_p.T).T  # Shape: (num_primary_modes, num_time_steps)
-    step2_time = time.time() - step2_start
+    # Step B: Normalize q_p
+    stepB_start = time.time()
+    q_p_normalized = scaler.transform(q_p.T).T  # (r_p, num_time_steps)
+    stepB_time = time.time() - stepB_start
 
-    # Step 3: Predict q_s using the GP model
-    step3_start = time.time()
+    # Step C: Predict q_s using custom logic
+    stepC_start = time.time()
     num_time_steps = q_p_normalized.shape[1]
     q_s_pred = []
 
     if print_times:
-        print("Predicting q_s for each time step using GP model...")
+        print("Predicting q_s for each time step using CUSTOM GP logic...")
 
     for i in range(num_time_steps):
-        q_p_sample = q_p_normalized[:, i].reshape(1, -1)  # (1, num_primary_modes)
-        # gp_model.predict(...) -> shape (1, num_secondary_modes)
-        q_s_sample_unscaled = gp_model.predict(q_p_sample)
+        # shape (r_p,) => (1, r_p)
+        q_p_sample = q_p_normalized[:, i].reshape(1, -1)
+        # custom predict
+        q_s_sample_unscaled = my_custom_predict(q_p_sample)
         q_s_pred.append(q_s_sample_unscaled.flatten())
 
-    # Convert from list to array of shape (num_secondary_modes, num_time_steps)
-    q_s_pred = np.array(q_s_pred).T
-    step3_time = time.time() - step3_start
+    q_s_pred = np.array(q_s_pred).T  # => (r_s, num_time_steps)
+    stepC_time = time.time() - stepC_start
 
-    # Step 4: Reconstruct the full snapshots
-    step4_start = time.time()
+    # Step D: Reconstruct full snapshots
+    stepD_start = time.time()
     reconstructed_snapshots_gp = []
     for i in range(num_time_steps):
         reconstructed_snapshot_gp = U_p @ q_p[:, i] + U_s @ q_s_pred[:, i]
         reconstructed_snapshots_gp.append(reconstructed_snapshot_gp)
+    reconstructed_snapshots_gp = np.array(reconstructed_snapshots_gp).T
+    stepD_time = time.time() - stepD_start
 
-    reconstructed_snapshots_gp = np.array(reconstructed_snapshots_gp).T  # (num_dofs, num_time_steps)
-    step4_time = time.time() - step4_start
-
-    # Print timing if requested
+    # Print overall timing if requested
     if print_times:
-        total_time = time.time() - total_start_time
+        total_time = time.time() - start_total_time
         print("[reconstruct_snapshot_with_gp] timing breakdown:")
-        print(f"  Step 1 (project snapshot): {step1_time:.6f} s")
-        print(f"  Step 2 (normalize q_p): {step2_time:.6f} s")
-        print(f"  Step 3 (GP predictions): {step3_time:.6f} s")
-        print(f"  Step 4 (reconstruct): {step4_time:.6f} s")
-        print(f"  Total reconstruction time: {total_time:.6f} s")
+        print(f"  Step A (project): {stepA_time:.6f} s")
+        print(f"  Step B (normalize): {stepB_time:.6f} s")
+        print(f"  Step C (custom GP predictions): {stepC_time:.6f} s")
+        print(f"  Step D (reconstruct): {stepD_time:.6f} s")
+        print(f"  Total time: {total_time:.6f} s")
 
     return reconstructed_snapshots_gp
 
 
 if __name__ == '__main__':
     # Define the parameter pair you want to reconstruct and compare
-    target_mu = [4.75, 0.02]  # Example: mu1=5.19, mu2=0.026
+    target_mu = [4.56, 0.019]  # Example: mu1=5.19, mu2=0.026
 
     # Define simulation parameters
     dt = 0.05
@@ -117,7 +142,7 @@ if __name__ == '__main__':
         exit(1)  # Exit since the target snapshot is not available
 
     # Load the GP model (trained on unscaled q_s)
-    model_dir = "pod_gp_model"  # Changed from "modes"
+    model_dir = "pod_gp_model"
     try:
         gp_models_filename = os.path.join(model_dir, 'gp_model.pkl')
         with open(gp_models_filename, 'rb') as f:
@@ -149,7 +174,7 @@ if __name__ == '__main__':
     # Additional parameters
     num_modes = U_p.shape[1] + U_s.shape[1]
     compare_pod = True  # Set to True to include Standard POD reconstruction
-    print_times = True
+    print_times = True  # Turn on timing prints
 
     # Reconstruct the snapshot using GP interpolation (q_s unscaled)
     gp_reconstructed = reconstruct_snapshot_with_gp(

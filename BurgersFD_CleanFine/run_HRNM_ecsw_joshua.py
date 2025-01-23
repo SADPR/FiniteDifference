@@ -93,7 +93,7 @@ def get_snapshot_params():
       mu_samples += [[mu1, mu2]]
   return mu_samples
 
-def main(mu1=5.5, mu2=0.03, compute_ecsw=False):
+def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
 
     model_path = 'autoenc.pt'
     snap_folder = 'param_snaps'
@@ -206,7 +206,7 @@ def main(mu1=5.5, mu2=0.03, compute_ecsw=False):
     # Time-stepping to compute the HPROM-ANN at the out-of-sample parameter point
     t0 = time.time()
     q_snaps = basis.T@hdm_snaps
-    ys, man_times = inviscid_burgers_rnm2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu_rom_backup, rnm, ref, basis, basis2, weights, q_snaps)
+    ys, man_times = inviscid_burgers_rnm2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu_rom_backup, rnm, ref, basis, basis2, weights)
     man_its, man_jac, man_res, man_ls = man_times
     elapsed_time = time.time() - t0
     print(f'Elapsed HPROM-ANN time: {elapsed_time:.3e} seconds')

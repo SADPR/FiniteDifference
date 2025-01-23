@@ -1464,17 +1464,19 @@ def decode_gp(x, gp_model, basis, basis2, scaler, use_custom_predict=True, echo_
 
     return full_state
 
-
-def jac_gp_central_difference(x, gp_model, basis, basis2, scaler,
-                   fd_eps=1e-6, echo_level=0):
+def jac_gp_central_difference(
+    x, gp_model, basis, basis2, scaler,
+    fd_eps=1e-6, echo_level=0,
+    use_custom_predict=True
+):
     """
     Compute the full Jacobian V = U_p + U_s * d(q_s)/d(x)
     for a POD-GP method, where q_s = GP(q_p).
 
     This function uses a central-difference scheme to approximate the partial
     derivatives of the GP model output (secondary coordinates) w.r.t. the
-    (original, unscaled) primary coordinates x. It correctly applies the
-    chain rule for an internal scaling transform x_scaled.
+    original (unscaled) primary coordinates x. It applies the chain rule
+    for an internal scaling transform x_scaled.
 
     Parameters
     ----------
@@ -1482,77 +1484,110 @@ def jac_gp_central_difference(x, gp_model, basis, basis2, scaler,
         The current reduced primary POD coordinates (unscaled).
     gp_model : GaussianProcessRegressor (multi-output)
         Trained GP model mapping primary coords -> secondary coords.
-        This model expects scaled inputs.
+        This model expects scaled inputs unless we do a custom approach.
     basis : ndarray of shape (n_dofs, r_p)
         Primary POD basis, U_p.
     basis2 : ndarray of shape (n_dofs, r_s)
         Secondary POD basis, U_s.
     scaler : MinMaxScaler (or similar)
-        Scaler used to normalize the primary coordinates. 
-        Must match the one used when training gp_model.
-
-        In scikit-learn, if
-          x_scaled = (x_original - min_) * scale_,
-        then scale_ is 1 / (x_max - x_min) (times 2 if you're using [-1,1] etc.).
-        We must apply the chain rule to convert derivative in scaled space
-        to the derivative w.r.t. original x.
-
+        Scaler used to normalize the primary coordinates; must match training.
     fd_eps : float, optional
         Step size for central differencing in scaled space.
     echo_level : int, optional
-        Verbosity level (unused here, but kept for consistency).
+        Verbosity level (0=quiet).
+    use_custom_predict : bool, optional
+        If True, we manually compute k_vec @ alpha_ instead of calling gp_model.predict(...).
+        Default = False (call scikit-learn's predict).
 
     Returns
     -------
     full_jac : ndarray of shape (n_dofs, r_p)
         The Jacobian of the decoded full state w.r.t. the original (unscaled)
-        reduced primary coords. i.e., V = basis + basis2 @ (d q_s / d x).
+        reduced primary coords: V = basis + basis2 @ (d q_s / d x).
     """
 
-    # 1) Reshape (r_p,) => (1, r_p) and scale x
-    x_in = x.reshape(1, -1)
-    x_scaled = scaler.transform(x_in)  # shape: (1, r_p)
-
-    # We'll also retrieve the scaling factors for chain rule:
-    # scale_ is shape (r_p,)
-    scale_factors = scaler.scale_
-
-    # 2) Baseline prediction (not strictly needed for central difference, but good for reference)
-    q_s_base = gp_model.predict(x_scaled).ravel()  # shape (r_s,)
-
+    import time
     t0 = time.time()
-    r_p = x_in.shape[1]
-    r_s = q_s_base.size
 
-    # 3) Allocate array for partial derivatives of q_s: shape (r_s, r_p)
-    dq_s_dxp = np.zeros((r_s, r_p))
+    # --- Step 1: Reshape + scale x -------------------------------------------
+    x_in = x.reshape(1, -1)              # (1, r_p)
+    x_scaled = scaler.transform(x_in)    # shape (1, r_p)
+    scale_factors = scaler.scale_        # shape (r_p,)
 
-    # 4) Central difference for each coordinate in scaled space
+    # We'll parse internal GP data if custom predict is used
+    if use_custom_predict:
+        X_train_ = gp_model.X_train_
+        alpha_   = gp_model.alpha_
+        kernel_  = gp_model.kernel_
+
+    # --- Step 2: Baseline predict (not strictly needed, but 
+    #     we compute it for reference if we want or for comparison)
+    #     In central differencing, we typically don't strictly need a base
+    #     but it can be useful if we want to measure cost or do checks.
+    #     We'll store it just as info (not used for the difference).
+    baseline_start = time.time()
+    if not use_custom_predict:
+        q_s_base = gp_model.predict(x_scaled).ravel()
+    else:
+        k_vec = kernel_(X_train_, x_scaled).ravel()
+        q_s_base = k_vec @ alpha_
+    baseline_time = time.time() - baseline_start
+
+    # --- Step 3: Central differencing loop -----------------------------------
+    r_p = x_scaled.shape[1]
+    # We'll do x_plus and x_minus per dimension j
+    # Then compute (q_s_plus - q_s_minus)/(2*fd_eps) * scale_factor
+    dq_s_dxp = None
+
+    loop_start = time.time()
+    dq_s_dxp = np.zeros((q_s_base.size, r_p))
+
     half_eps = 0.5 * fd_eps
     for j in range(r_p):
-        # We move in scaled-space by +/- half_eps:
+        # build x_plus, x_minus
         x_plus  = x_scaled.copy()
         x_minus = x_scaled.copy()
 
         x_plus[0, j]  += half_eps
         x_minus[0, j] -= half_eps
 
-        q_s_plus  = gp_model.predict(x_plus).ravel()
-        q_s_minus = gp_model.predict(x_minus).ravel()
+        # q_s_plus
+        if not use_custom_predict:
+            q_s_plus  = gp_model.predict(x_plus).ravel()
+            q_s_minus = gp_model.predict(x_minus).ravel()
+        else:
+            # custom approach for x_plus
+            k_vec_plus  = kernel_(X_train_, x_plus).ravel()
+            q_s_plus    = k_vec_plus @ alpha_
+            # custom approach for x_minus
+            k_vec_minus = kernel_(X_train_, x_minus).ravel()
+            q_s_minus   = k_vec_minus @ alpha_
 
-        # Central difference in scaled space:
+        # difference in scaled space
         dq_s_dxp_scaled = (q_s_plus - q_s_minus) / (2.0 * half_eps)
 
-        # Now apply chain rule to get derivative w.r.t. unscaled x_j:
-        # d(q_s)/d(x_j) = d(q_s)/d(x_scaled_j) * d(x_scaled_j)/d(x_j)
-        # where d(x_scaled_j)/d(x_j) = scale_factors[j]
+        # chain rule => multiply by scale_factors[j] to get derivative wrt unscaled x_j
         dq_s_dxp[:, j] = dq_s_dxp_scaled * scale_factors[j]
-    
-    if echo_level > 0:
-        print(f"Total time for Jacobian computation: {time.time() - t0:.6f} seconds")
 
-    # 5) Full Jacobian = U_p + U_s @ (d q_s / d x)
+    loop_time = time.time() - loop_start
+
+    # --- Step 4: Combine with POD bases --------------------------------------
+    combine_start = time.time()
+    # full_jac = U_p + U_s @ dq_s_dxp
+    # shape => U_p: (n_dofs, r_p)
+    #           U_s: (n_dofs, r_s)
+    #    dq_s_dxp: (r_s, r_p)
     full_jac = basis + basis2 @ dq_s_dxp
+    combine_time = time.time() - combine_start
+
+    total_time = time.time() - t0
+    if echo_level > 0:
+        print("[jac_gp_central_difference] timing breakdown:")
+        print(f"  Step 1 (scale input): {0:.6f} s (not individually timed)")
+        print(f"  Step 2 (baseline predict): {baseline_time:.6f} s")
+        print(f"  Step 3 (central diff loop): {loop_time:.6f} s")
+        print(f"  Step 4 (combine w/ bases): {combine_time:.6f} s")
+        print(f"  Total time: {total_time:.6f} s")
 
     return full_jac
 
@@ -1651,8 +1686,6 @@ def jac_gp(
         print(f"  Total Jacobian time: {total_time:.6f} s")
 
     return full_jac
-
-import numpy as np
 
 def jac_gp_analytical_in_progress(
     x, gp_model, basis, basis2, scaler, echo_level=0
