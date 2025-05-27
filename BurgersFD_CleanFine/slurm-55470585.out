@@ -1,0 +1,2 @@
+/var/spool/slurmd/job55470585/slurm_script: line 31: 32697 Killed                  python3 /scratch/users/sadpr/BurgersFD_CleanFine/${PYTHON_SCRIPT}.py
+slurmstepd: error: Detected 1 oom_kill event in StepId=55470585.batch. Some of the step tasks have been OOM Killed.

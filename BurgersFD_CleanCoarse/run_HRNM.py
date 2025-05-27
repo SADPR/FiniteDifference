@@ -134,13 +134,13 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
         for imu, mu in enumerate(mu_samples):
           tmu = torch.tensor(mu.copy(), dtype=torch.float)
           mu_snaps = load_or_compute_snaps(mu, grid_x, grid_y, w0, dt, num_steps, snap_folder=snap_folder)
-          
+
           def decode(x, with_grad=True):
             if with_grad:
-              return  basis @ x + basis2 @ rnm(torch.cat((x, tmu))) #basis @ x + basis2 @ rnm(x)
+              return basis @ x + basis2 @ rnm(x) #basis2 @ rnm(torch.cat((x, tmu)))
             else:
               with torch.no_grad():
-                return basis @ x + basis2 @ rnm(torch.cat((x, tmu))) #basis @ x + basis2 @ rnm(x)
+                return basis @ x + basis2 @ rnm(x) #basis2 @ rnm(torch.cat((x, tmu)))
 
           import functorch
           jacfwdfunc = functorch.jacfwd(decode)
@@ -165,13 +165,13 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
 
         t1 = time.time()
         #weights, _, _ = lsqnonneg(C, C.sum(axis=1))
-        #weights, _ = nnls(C, C.sum(axis=1), maxiter=99999999)
+        weights, _ = nnls(C, C.sum(axis=1), maxiter=99999999)
         # Using scikit-learn's LinearRegression with positive constraint
-        reg_nnls = LinearRegression(positive=True)
-        reg_nnls.fit(C, C.sum(axis=1))  # Directly passing the target as C.sum(axis=1)
+        #reg_nnls = LinearRegression(positive=True)
+        #reg_nnls.fit(C, C.sum(axis=1))  # Directly passing the target as C.sum(axis=1)
 
         # Retrieve the weights
-        weights = reg_nnls.coef_.flatten()  # Flatten to match the shape as with `nnls`
+        #weights = reg_nnls.coef_.flatten()  # Flatten to match the shape as with `nnls`
         print('nnls solve time: {}'.format(time.time() - t1))
 
         print('nnls solver residual: {}'.format(

@@ -49,7 +49,7 @@ def load_autoencoder_monitor(model_path, device, plot=False):
   sizes = np.load('sizes.npy', allow_pickle=True)
 
   print(sizes)
-  rnm = RNM_NN(sizes[0], sizes[1]-sizes[0]).to(device)
+  rnm = RNM_NN(sizes[0]+2, sizes[1]-sizes[0]).to(device)
   opt = optim.Adam(rnm.parameters(), lr=LR_INIT)
   scheduler = optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.1,
                                                    patience=LR_PATIENCE, verbose=True)
@@ -80,7 +80,7 @@ def compare_snaps(snaps_to_plot, inds_to_plot, labels, colors, linewidths):
                color=colors[i],
                linewidth=linewidths[i])
 
-def main(mu1=4.75, mu2=0.02):
+def main(mu1=5.19, mu2=0.026):
 
     model_path = 'autoenc.pt'
     snap_folder = 'param_snaps'
@@ -90,7 +90,7 @@ def main(mu1=4.75, mu2=0.02):
 
     dt = 0.05
     num_steps = 500
-    num_cells_x, num_cells_y = 250, 250
+    num_cells_x, num_cells_y = 750, 750
     xl, xu, yl, yu = 0, 100, 0, 100
     grid_x, grid_y = make_2D_grid(xl, xu, yl, yu, num_cells_x, num_cells_y)
     u0 = np.ones((num_cells_y, num_cells_x))

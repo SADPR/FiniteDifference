@@ -42,11 +42,11 @@ def create_overlay_image(npy_files, hdm_file, labels, colors, linewidths, output
     # Timesteps to plot
     inds_to_plot = range(0, num_steps + 1, 100)  # Every 100 timesteps
 
-    # Create the figure and subplots (2 rows, 2 columns)
-    fig, axes = plt.subplots(2, 2, figsize=(14, 8))
+    # Create the figure and subplots (2 rows, 3 columns for three datasets)
+    fig, axes = plt.subplots(2, 3, figsize=(21, 8))  # Adjust the figure size for three columns
 
     # Remove outer margins, but keep inner spacing
-    fig.subplots_adjust(left=0.05, right=0.95, top=0.85, bottom=0.1, wspace=0.3, hspace=0.3)
+    fig.subplots_adjust(left=0.03, right=0.97, top=0.85, bottom=0.13, wspace=0.3, hspace=0.3)
 
     # Add a subtitle for `mu1` and `mu2`
     fig.suptitle(f"Parameter Values: $\\mu_1 = {mu1:.2f}$, $\\mu_2 = {mu2:.3f}$", fontsize=14, y=0.94)
@@ -95,23 +95,24 @@ def create_overlay_image(npy_files, hdm_file, labels, colors, linewidths, output
 
 if __name__ == "__main__":
     # File paths for the `.npy` snapshot files
-    hdm_file = "mu1_5.5+mu2_0.03.npy"  # HDM file
+    hdm_file = "mu1_4.25+mu2_0.0225.npy"  # HDM file
     npy_files = [
-        "pod_rbf_hprom_global_snaps_mu1_5.50_mu2_0.030.npy",
-        "pod_ann_hprom_snaps_mu1_5.50_mu2_0.030.npy"
+        "pod_ann_hprom_snaps_mu1_4.25_mu2_0.022.npy",
+        "pod_rbf_hprom_global_snaps_mu1_4.25_mu2_0.022.npy",
+        "pod_gp_hprom_snaps_mu1_4.25_mu2_0.022.npy"  # Added third file
     ]
 
     # Dynamically name the output image based on the HDM file
     output_image = hdm_file.replace(".npy", "_overlay_with_params.png")
 
     # Labels, colors, and line widths for each simulation
-    labels = ["POD-RBF HPROM Global", "POD-ANN HPROM"]
-    colors = ["green", "red"]
-    linewidths = [2, 2]
+    labels = ["POD-ANN HPROM", "POD-RBF HPROM", "POD-GP HPROM"]  # Added third label
+    colors = ["red", "blue", "green"]  # Added third color
+    linewidths = [2, 2, 2]  # Line width for all three plots
 
     # Parameter values to display
-    mu1 = 5.5
-    mu2 = 0.03
+    mu1 = 4.25
+    mu2 = 0.0225
 
     # Number of timesteps (assume all `.npy` files have the same number of timesteps)
     sample_snaps = np.load(npy_files[0])

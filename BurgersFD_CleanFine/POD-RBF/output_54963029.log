@@ -1,0 +1,45 @@
+Total parameter samples: 9
+Loading saved snaps for mu1=4.25, mu2=0.015
+Shape of each snapshot: (1125000, 501)
+Total number of snapshots to aggregate: 4509
+Loading saved snaps for mu1=4.25, mu2=0.015
+(1125000, 501)
+Loaded snapshot 1/9 for mu1=4.25, mu2=0.015
+Loading saved snaps for mu1=4.25, mu2=0.0225
+(1125000, 501)
+Loaded snapshot 2/9 for mu1=4.25, mu2=0.0225
+Loading saved snaps for mu1=4.25, mu2=0.03
+(1125000, 501)
+Loaded snapshot 3/9 for mu1=4.25, mu2=0.03
+Loading saved snaps for mu1=4.875, mu2=0.015
+(1125000, 501)
+Loaded snapshot 4/9 for mu1=4.875, mu2=0.015
+Loading saved snaps for mu1=4.875, mu2=0.0225
+(1125000, 501)
+Loaded snapshot 5/9 for mu1=4.875, mu2=0.0225
+Loading saved snaps for mu1=4.875, mu2=0.03
+(1125000, 501)
+Loaded snapshot 6/9 for mu1=4.875, mu2=0.03
+Loading saved snaps for mu1=5.5, mu2=0.015
+(1125000, 501)
+Loaded snapshot 7/9 for mu1=5.5, mu2=0.015
+Loading saved snaps for mu1=5.5, mu2=0.0225
+(1125000, 501)
+Loaded snapshot 8/9 for mu1=5.5, mu2=0.0225
+Loading saved snaps for mu1=5.5, mu2=0.03
+(1125000, 501)
+Loaded snapshot 9/9 for mu1=5.5, mu2=0.03
+Successfully loaded 4509 snapshots out of 4509.
+Combined snapshot matrix shape: (1125000, 4509)
+Performing Randomized SVD for POD...
+Randomized SVD completed in 819.05 seconds.
+Computed POD basis with method 'rsvd' and 150 modes.
+Saved computed basis to 'basis.npy' and singular values to 'sigma.npy'.
+Projecting snapshots onto the POD basis...
+Projection took 37.97 seconds.
+Created modes directory: modes
+Primary and secondary modes, as well as projected data (q, q_p, q_s), saved successfully.
+Building KDTree...
+KDTree construction took 0.00 seconds.
+Training data and KDTree have been saved successfully in modes/training_data.pkl.
+Processing complete.

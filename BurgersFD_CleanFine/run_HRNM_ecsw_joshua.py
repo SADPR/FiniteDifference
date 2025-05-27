@@ -93,7 +93,7 @@ def get_snapshot_params():
       mu_samples += [[mu1, mu2]]
   return mu_samples
 
-def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
+def main(mu1=4.875, mu2=0.0225, compute_ecsw=False):
 
     model_path = 'autoenc.pt'
     snap_folder = 'param_snaps'
@@ -199,6 +199,7 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
         plt.tight_layout()
         plt.savefig('prom-reduced-mesh.png', dpi=300)
     else:
+        #weights = np.load('pod_rbf_global_model/ecm_weights_rbf_global.npy')
         weights = np.load('ecsw_weights_rnm_working.npy')
     print('N_e = {}'.format(np.sum(weights > 0)))
     #END ECSW

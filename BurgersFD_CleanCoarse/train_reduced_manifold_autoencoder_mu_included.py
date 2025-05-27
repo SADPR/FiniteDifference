@@ -24,10 +24,10 @@ from torch.utils.data import DataLoader, TensorDataset
 
 EPOCHS = 50000
 ROM_SIZE = 40
-LR_INIT = 1e-3
+LR_INIT = 1e-4
 LR_PATIENCE = 100
 COMPLETION_PATIENCE = 500
-MODEL_PATH = 'autoenc.pt'
+MODEL_PATH = 'autoenc_.pt'
 CARLBERG = False
 
 from hypernet2D import (load_or_compute_snaps, make_2D_grid, inviscid_burgers_implicit2D_LSPG,

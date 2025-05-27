@@ -95,7 +95,7 @@ def get_snapshot_params():
       mu_samples += [[mu1, mu2]]
   return mu_samples
 
-def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
+def main(mu1=4.56, mu2=0.019, compute_ecsw=False):
 
     model_path = 'autoenc.pt'
     snap_folder = 'param_snaps'
@@ -168,7 +168,7 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
         t1 = time.time()
         C = np.ascontiguousarray(C, dtype=np.float64)
         b = np.ascontiguousarray(C.sum(axis=1), dtype=np.float64)
-        u,_,_,_= RandomizedSingularValueDecomposition().Calculate(C.T, 1e-6)
+        u,_,_,_= RandomizedSingularValueDecomposition().Calculate(C.T, 1e-8)
         hyper_reduction_element_selector = EmpiricalCubatureMethod()
         hyper_reduction_element_selector.SetUp(u, InitialCandidatesSet = None, constrain_sum_of_weights=True, constrain_conditions = False)
         hyper_reduction_element_selector.Run()

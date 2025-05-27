@@ -187,10 +187,10 @@ def main():
     print("Normalization of q_p complete.")
 
     # Save the scaler for q_p
-    model_dir = "pod_gp_model"  # Changed from "modes" to "pod_gp_model"
+    model_dir = "pod_rbf_global_model"
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
-        print(f"Created model directory: {model_dir}")
+        print(f"Created directory: {model_dir}")
 
     with open(os.path.join(model_dir, 'scaler.pkl'), 'wb') as f:
         pickle.dump(scaler, f)
@@ -228,19 +228,19 @@ def main():
     # -------------------------------------------------------------------------
     # COMMENT THE RBF AND USE A MATÉRN KERNEL INSTEAD
     # -------------------------------------------------------------------------
-    # kernel = ConstantKernel(constant_value=1.0, constant_value_bounds='fixed') * \
-    #          RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e3)) + \
+    #kernel = ConstantKernel(constant_value=1.0, constant_value_bounds=(1e-2,10)) * \
+    #          RBF(length_scale=1.0, length_scale_bounds=(1e-2, 5))
     #          WhiteKernel(noise_level=1e-5, noise_level_bounds='fixed')
     #
-    kernel = ConstantKernel(constant_value=1.0, constant_value_bounds='fixed') * \
-             Matern(length_scale=1.0, length_scale_bounds=(1e-2, 1e3), nu=1.5) + \
-             WhiteKernel(noise_level=1e-5, noise_level_bounds='fixed')
+    kernel = ConstantKernel(constant_value=1.0, constant_value_bounds=(1e-3, 1e2)) * \
+             Matern(length_scale=1.0, length_scale_bounds=(1e-1, 2), nu=1.5) 
     # -------------------------------------------------------------------------
 
     # Instantiate the base GP regressor
     base_gp = GaussianProcessRegressor(
         kernel=kernel,
-        n_restarts_optimizer=2,
+        alpha=1e-6,
+        n_restarts_optimizer=1,
         optimizer='fmin_l_bfgs_b',
         normalize_y=False
     )
@@ -261,5 +261,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-
 

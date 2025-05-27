@@ -33,7 +33,7 @@ def calculate_epsilon_proportional_to_domain_size(kdtree, q_p_train, x_new, neig
 
 # Define the Gaussian RBF kernel function
 def gaussian_rbf(r, epsilon):
-    return r#np.exp(-(epsilon * r) ** 2)
+    return np.exp(-(epsilon * r) ** 2)
 
 # Function to dynamically interpolate at new points using nearest neighbors
 def interpolate_on_the_fly(kdtree, q_p_train, q_s_train, x_new, epsilon, neighbors):
@@ -51,7 +51,7 @@ def interpolate_on_the_fly(kdtree, q_p_train, q_s_train, x_new, epsilon, neighbo
     return f_new
 
 # Function to find the best epsilon and neighbor values per snapshot
-def find_best_epsilon_per_snapshot(hdm_snap, U_p, U_s, q_p_train, q_s_train, kdtree, r, constant=0.1, neighbors=20):
+def find_best_epsilon_per_snapshot(hdm_snap, U_p, U_s, q_p_train, q_s_train, kdtree, r, constant=0.1, neighbors=40):
     num_snapshots = hdm_snap.shape[1]  # Number of snapshots
     best_reconstructed_snapshots = []
     best_parameters_per_snapshot = []
@@ -192,6 +192,7 @@ if __name__ == '__main__':
     pod_rbf_error = np.linalg.norm(hdm_snap - best_reconstructed_snapshots) / np.linalg.norm(hdm_snap)
     print(f"POD-RBF Reconstruction error (Gaussian kernel): {pod_rbf_error:.6e}")
 
+    '''
     # Plot comparison of snapshots (HDM vs best POD-RBF)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
     inds_to_plot = range(0, num_steps + 1, 20)
@@ -210,3 +211,4 @@ if __name__ == '__main__':
     plt.savefig(plot_filename, dpi=300)
     plt.close()
     print(f"Comparison plot saved to {plot_filename}")
+    '''

@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from hypernet2D import compute_ECSW_training_matrix_2D, make_2D_grid, plot_snaps, \
     load_or_compute_snaps, inviscid_burgers_implicit2D_LSPG, POD, inviscid_burgers_res2D, \
     inviscid_burgers_exact_jac2D, inviscid_burgers_ecsw_fixed
-from lsqnonneg import lsqnonneg
+#from lsqnonneg import lsqnonneg
 
 plt.rcParams.update({
     "text.usetex": True,
@@ -71,14 +71,17 @@ def main(mu1= 4.74, mu2=0.02, compute_ecsw = True):
         nn_xr = 1
         nn_y = 1
         idxs[nn_y:-nn_y, nn_xl:-nn_xr] = 1
-
+        
         # Larger weighting for boundary terms due to the Dirichlet boundary condition
         bc_w = 10
         C = C[:, (idxs == 1).ravel()]
 
         t1 = time.time()
+        print('Before C as contiguous')
         C = np.ascontiguousarray(C, dtype=np.float64)
+        print('After C as contiguous', C.shape )
         b = np.ascontiguousarray(C.sum(axis=1), dtype=np.float64)
+        print('Before NNLS', b.shape)
         weights, _ = nnls(C, b, maxiter=99999999)
         print('nnls solve time: {}'.format(time.time() - t1))
 

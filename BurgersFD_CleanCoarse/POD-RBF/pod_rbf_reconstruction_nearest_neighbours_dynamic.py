@@ -25,10 +25,6 @@ def gaussian_rbf(r, epsilon):
 def inverse_multiquadric_rbf(r, epsilon):
     return 1.0 / np.sqrt(1 + (epsilon * r) ** 2)
 
-def linear_rbf(r, epsilon):
-    """Linear RBF kernel function."""
-    return r
-
 # Function to dynamically interpolate at new points using nearest neighbors
 def interpolate_on_the_fly(kdtree, q_p_train, q_s_train, x_new, epsilon, neighbors, print_times=False):
     """Interpolate at new points using nearest neighbors and solving the system on the fly."""
@@ -56,7 +52,7 @@ def interpolate_on_the_fly(kdtree, q_p_train, q_s_train, x_new, epsilon, neighbo
     solve_time = time.time()
     if print_times:
         print(f"Solving the linear system took: {solve_time - rbf_matrix_time:.6f} seconds")
-    
+
     rbf_values = gaussian_rbf(dist, epsilon)
     rbf_eval_time = time.time()
     if print_times:
@@ -131,7 +127,7 @@ def compare_snaps(snaps_to_plot, inds_to_plot, labels, colors, linewidths):
 
 if __name__ == '__main__':
     # Define the parameter pair you want to reconstruct and compare
-    target_mu = [5.19, 0.026]  # Example: mu1=4.56, mu2=0.019
+    target_mu = [4.56, 0.019]  # Example: mu1=4.56, mu2=0.019
 
     # Define simulation parameters
     dt = 0.05
@@ -183,7 +179,7 @@ if __name__ == '__main__':
         print(e)
         exit(1)
 
-    epsilon = 1
+    epsilon = 0.001
     neighbors = 20
     r = 10  # Number of primary modes used
     num_modes = 150
@@ -211,12 +207,12 @@ if __name__ == '__main__':
         os.makedirs(results_dir)
 
     pod_rbf_file_path = os.path.join(results_dir, f"reconstructed_snapshot_pod_rbf_mu1_{target_mu[0]}_mu2_{target_mu[1]}.npy")
-    #np.save(pod_rbf_file_path, pod_rbf_reconstructed)
+    np.save(pod_rbf_file_path, pod_rbf_reconstructed)
     print(f"POD-RBF reconstructed snapshot saved successfully to {pod_rbf_file_path}")
 
     if compare_pod:
         pod_file_path = os.path.join(results_dir, f"reconstructed_snapshot_pod_mu1_{target_mu[0]}_mu2_{target_mu[1]}.npy")
-        #np.save(pod_file_path, pod_reconstructed)
+        np.save(pod_file_path, pod_reconstructed)
         print(f"Standard POD reconstructed snapshot saved successfully to {pod_file_path}")
 
     # Calculate and compare reconstruction errors

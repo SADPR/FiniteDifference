@@ -185,4 +185,4 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
     return elapsed_time, relative_error
 
 if __name__ == "__main__":
-    main(mu1=5.19, mu2= 0.026, compute_ecsw=False)
+    main(mu1=4.75, mu2= 0.02, compute_ecsw=False)

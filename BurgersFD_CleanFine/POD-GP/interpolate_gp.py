@@ -29,22 +29,14 @@ def reconstruct_snapshot_with_gp(snapshot, U_p, U_s, scaler, gp_model, print_tim
     - gp_model : The fitted GP model (unscaled q_s).
     - print_times : (bool) Print timing information if True.
     """
-
-    total_start_time = time.time()
-
-    # Step 1: Project snapshot onto primary coordinates
-    step1_start = time.time()
+    start_total_time = time.time()
     q = U_p.T @ snapshot
     q_p = q[:U_p.shape[1], :]
-    step1_time = time.time() - step1_start
 
-    # Step 2: Normalize q_p
-    step2_start = time.time()
+    # Normalize q_p using the saved scaler
     q_p_normalized = scaler.transform(q_p.T).T  # Shape: (num_primary_modes, num_time_steps)
-    step2_time = time.time() - step2_start
 
-    # Step 3: Predict q_s using the GP model
-    step3_start = time.time()
+    # Predict q_s using the GP model
     num_time_steps = q_p_normalized.shape[1]
     q_s_pred = []
 
@@ -59,34 +51,25 @@ def reconstruct_snapshot_with_gp(snapshot, U_p, U_s, scaler, gp_model, print_tim
 
     # Convert from list to array of shape (num_secondary_modes, num_time_steps)
     q_s_pred = np.array(q_s_pred).T
-    step3_time = time.time() - step3_start
 
-    # Step 4: Reconstruct the full snapshots
-    step4_start = time.time()
+    # Because we trained on unscaled q_s, these predictions are already in the unscaled space.
     reconstructed_snapshots_gp = []
     for i in range(num_time_steps):
         reconstructed_snapshot_gp = U_p @ q_p[:, i] + U_s @ q_s_pred[:, i]
         reconstructed_snapshots_gp.append(reconstructed_snapshot_gp)
 
     reconstructed_snapshots_gp = np.array(reconstructed_snapshots_gp).T  # (num_dofs, num_time_steps)
-    step4_time = time.time() - step4_start
 
-    # Print timing if requested
     if print_times:
-        total_time = time.time() - total_start_time
-        print("[reconstruct_snapshot_with_gp] timing breakdown:")
-        print(f"  Step 1 (project snapshot): {step1_time:.6f} s")
-        print(f"  Step 2 (normalize q_p): {step2_time:.6f} s")
-        print(f"  Step 3 (GP predictions): {step3_time:.6f} s")
-        print(f"  Step 4 (reconstruct): {step4_time:.6f} s")
-        print(f"  Total reconstruction time: {total_time:.6f} s")
+        elapsed = time.time() - start_total_time
+        print(f"Reconstruction process completed in {elapsed:.6f} seconds")
 
     return reconstructed_snapshots_gp
 
 
 if __name__ == '__main__':
     # Define the parameter pair you want to reconstruct and compare
-    target_mu = [4.75, 0.02]  # Example: mu1=5.19, mu2=0.026
+    target_mu = [4.56, 0.019]  # Example: mu1=5.19, mu2=0.026
 
     # Define simulation parameters
     dt = 0.05
@@ -149,7 +132,7 @@ if __name__ == '__main__':
     # Additional parameters
     num_modes = U_p.shape[1] + U_s.shape[1]
     compare_pod = True  # Set to True to include Standard POD reconstruction
-    print_times = True
+    print_times = False
 
     # Reconstruct the snapshot using GP interpolation (q_s unscaled)
     gp_reconstructed = reconstruct_snapshot_with_gp(
@@ -237,9 +220,10 @@ if __name__ == '__main__':
     plt.tight_layout()
     plt.grid(True)
     plt.legend(loc='upper right')
-    plot_filename = f"plot_mu1_{target_mu[0]:.2f}_mu2_{target_mu[1]}.png"
+    plot_filename = f"plot_mu1_{target_mu[0]:.2f}_mu2_{target_mu[1]:.3f}_n{num_modes}.png"
     plt.savefig(os.path.join(results_dir, plot_filename), dpi=300)
     print(f"Comparison plot saved successfully to {os.path.join(results_dir, plot_filename)}")
 
     # Optionally, display the plot
     # plt.show()
+

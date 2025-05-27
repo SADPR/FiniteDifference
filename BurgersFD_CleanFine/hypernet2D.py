@@ -351,9 +351,7 @@ def inviscid_burgers_rnm2D(grid_x, grid_y, w0, dt, num_steps, mu, rnm, ref, basi
     y0 = basis.T @ w0.squeeze()
     
     with torch.no_grad():
-        # Reconstruct the full state using POD and ANN without tracking gradients
-        # Here, rnm(y0) represents the ANN's output for the nonlinear mapping
-        w0 = basis @ y0 + basis2 @ rnm(y0)  # \(\tilde{\mathbf{u}} = \mathbf{V}\mathbf{q} + \mathbf{\bar{V}}\mathcal{N}(\mathbf{q})\)
+        w0 = basis@y0 + basis2@rnm(torch.cat((y0, tmu))) #basis2@rnm(y0)
     
     # Determine the size of the reduced coordinate vector
     nred = y0.shape[0]
@@ -385,11 +383,11 @@ def inviscid_burgers_rnm2D(grid_x, grid_y, w0, dt, num_steps, mu, rnm, ref, basi
         """
         if with_grad:
             # Include gradient tracking for derivative calculations
-            return basis @ x + basis2 @ rnm(x)
+            return basis @ x + basis2 @ rnm(torch.cat((x, tmu)))#rnm(x)
         else:
             # Reconstruct without tracking gradients for efficiency
             with torch.no_grad():
-                return basis @ x + basis2 @ rnm(x)
+                return basis @ x + basis2 @ rnm(torch.cat((x, tmu)))#rnm(x)
     
     # Compute the Jacobian of the decode function with respect to reduced coordinates
     jacfwdfunc = functorch.jacfwd(decode)
@@ -407,7 +405,7 @@ def inviscid_burgers_rnm2D(grid_x, grid_y, w0, dt, num_steps, mu, rnm, ref, basi
     # Measure average time to evaluate the ANN
     t0 = time.time()
     for i in range(100):
-        rnm(yp)  # Evaluate ANN with current reduced coordinates
+        rnm(torch.cat((yp, tmu)))#rnm(yp)  # Evaluate ANN with current reduced coordinates
     print('Time to evaluate network: {:3.2e}'.format((time.time() - t0)/100))
     
     # -----------------------------------
@@ -444,7 +442,7 @@ def inviscid_burgers_rnm2D(grid_x, grid_y, w0, dt, num_steps, mu, rnm, ref, basi
         with torch.no_grad():
             # Reconstruct the full state using the updated reduced coordinates
             # \(\tilde{\mathbf{u}} = \mathbf{V}\mathbf{q} + \mathbf{\bar{V}}\mathcal{N}(\mathbf{q})\)
-            w = basis @ y + basis2 @ rnm(y)
+            w = basis @ y + basis2 @ rnm(torch.cat((yp, tmu)))#rnm(y)
     
         # Store the updated reduced coordinates and full state snapshot
         red_coords[:, i + 1] = y.squeeze().numpy()
@@ -973,7 +971,7 @@ def inviscid_burgers_pod_rbf_2D_global(grid_x, grid_y, w0, dt, num_steps, mu, ba
     return snaps, (num_its, jac_time, res_time, ls_time)
 
 def inviscid_burgers_pod_rbf_2D_global_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, basis, basis2,
-                                            W_global, q_p_train, q_s_train, weights, epsilon, scaler, kernel_type='gaussian'):
+                                            W_global, q_p_train, q_s_train, weights, epsilon, scaler, q_snaps, kernel_type='gaussian'):
     """
     Use a first-order Godunov spatial discretization and a second-order trapezoid rule
     time integrator to solve an LSPG manifold PROM for a parameterized inviscid 2D Burgers'
@@ -1097,6 +1095,10 @@ def inviscid_burgers_pod_rbf_2D_global_ecsw(grid_x, grid_y, w0, dt, num_steps, m
         jac_time += jac_timep
         res_time += res_timep
         ls_time += ls_timep
+
+        if i % 258492480 == 0 or i < 0:
+            print(f"This step was given: {i}")
+            y = q_snaps[:,i+1]
 
         # Reconstruct the full state
         w_reconstructed = decode_rbf_global(y, W_global, q_p_train, V, Vbar, epsilon, scaler, kernel_type, echo_level=0)
@@ -1356,7 +1358,7 @@ def decode_rbf_global(x, W_global, q_p_train, basis, basis2, epsilon, scaler, ke
     - basis, basis2: POD matrices for reconstruction.
     - epsilon: RBF shape parameter.
     - scaler: Normalization scaler.
-    - kernel_type: RBF type ('gaussian', 'imq', 'linear', 'multiquadric').
+    - kernel_type: RBF type ('gaussian', 'imq', 'linear', 'multiquadric', 'matern').
     - echo_level: Verbosity level.
 
     Returns:
@@ -1364,20 +1366,34 @@ def decode_rbf_global(x, W_global, q_p_train, basis, basis2, epsilon, scaler, ke
     """
     # Perform global RBF interpolation
     if kernel_type == 'gaussian':
-        q_s_pred = RBFUtils.interpolate_with_rbf_global_gaussian(x, q_p_train, W_global, epsilon, scaler, echo_level)
+        q_s_pred = RBFUtils.interpolate_with_rbf_global_gaussian(
+            x, q_p_train, W_global, epsilon, scaler, echo_level
+        )
     elif kernel_type == 'imq':
-        q_s_pred = RBFUtils.interpolate_with_rbf_global_imq(x, q_p_train, W_global, epsilon, scaler, echo_level)
+        q_s_pred = RBFUtils.interpolate_with_rbf_global_imq(
+            x, q_p_train, W_global, epsilon, scaler, echo_level
+        )
     elif kernel_type == 'linear':
-        q_s_pred = RBFUtils.interpolate_with_rbf_global_linear(x, q_p_train, W_global, scaler, echo_level)
+        q_s_pred = RBFUtils.interpolate_with_rbf_global_linear(
+            x, q_p_train, W_global, scaler, echo_level
+        )
     elif kernel_type == 'multiquadric':
-        q_s_pred = RBFUtils.interpolate_with_rbf_global_multiquadric(x, q_p_train, W_global, epsilon, scaler, echo_level)
+        q_s_pred = RBFUtils.interpolate_with_rbf_global_multiquadric(
+            x, q_p_train, W_global, epsilon, scaler, echo_level
+        )
+    elif kernel_type == 'matern':
+        q_s_pred = RBFUtils.interpolate_with_rbf_global_matern32(
+            x, q_p_train, W_global, epsilon, scaler, echo_level
+        )
     else:
         raise ValueError(f"Unsupported kernel type: {kernel_type}")
 
     # Reconstruct the full state vector
     return basis @ x + basis2 @ q_s_pred
 
-def jac_rbf_global(x, W_global, q_p_train, q_s_train, basis, basis2, epsilon, scaler, kernel_type='gaussian', echo_level = 0):
+
+def jac_rbf_global(x, W_global, q_p_train, q_s_train, basis, basis2, epsilon, scaler,
+                   kernel_type='gaussian', echo_level=0):
     """
     Compute the full Jacobian V = U_p + U_s * J_RBF (global).
 
@@ -1390,7 +1406,7 @@ def jac_rbf_global(x, W_global, q_p_train, q_s_train, basis, basis2, epsilon, sc
     - basis2: U_s matrix from POD.
     - epsilon: Shape parameter for RBF.
     - scaler: Scaler for normalization (e.g., StandardScaler or MinMaxScaler).
-    - kernel_type: Type of RBF kernel to use ('gaussian', 'imq', 'linear', 'multiquadric').
+    - kernel_type: Type of RBF kernel to use ('gaussian', 'imq', 'linear', 'multiquadric', 'matern').
 
     Returns:
     - Full Jacobian V with respect to reduced coordinates.
@@ -1401,13 +1417,25 @@ def jac_rbf_global(x, W_global, q_p_train, q_s_train, basis, basis2, epsilon, sc
 
     # Compute RBF Jacobian globally
     if kernel_type == 'gaussian':
-        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_gaussian(x_normalized, q_p_train, W_global, epsilon, scaler, echo_level=echo_level)
+        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_gaussian(
+            x_normalized, q_p_train, W_global, epsilon, scaler, echo_level=echo_level
+        )
     elif kernel_type == 'imq':
-        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_imq(x_normalized, q_p_train, W_global, epsilon, scaler, echo_level=echo_level)
+        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_imq(
+            x_normalized, q_p_train, W_global, epsilon, scaler, echo_level=echo_level
+        )
     elif kernel_type == 'linear':
-        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_linear(x_normalized, q_p_train, W_global, epsilon, scaler, echo_level=echo_level)
+        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_linear(
+            x_normalized, q_p_train, W_global, epsilon, scaler, echo_level=echo_level
+        )
     elif kernel_type == 'multiquadric':
-        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_multiquadric(x_normalized, q_p_train, W_global, epsilon, scaler, echo_level=echo_level)
+        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_multiquadric(
+            x_normalized, q_p_train, W_global, epsilon, scaler, echo_level=echo_level
+        )
+    elif kernel_type == 'matern':
+        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_matern32(
+            x_normalized, q_p_train, W_global, epsilon, scaler, echo_level=echo_level
+        )
     else:
         raise ValueError(f"Unsupported kernel type: {kernel_type}")
 
@@ -3005,13 +3033,8 @@ def compute_ECSW_training_matrix_2D_rbf_global(snaps, prev_snaps, basis, basis2,
 
     return C
 
-def compute_ECSW_training_matrix_2D_gp(snaps, prev_snaps, basis, basis2,
-                                       gp_model,
-                                       res, jac,
-                                       grid_x, grid_y, dt, mu,
-                                       scaler,
-                                       max_local_its=10,
-                                       local_tol=1e-2):
+def compute_ECSW_training_matrix_2D_gp(snaps, prev_snaps, basis, basis2, gp_model, res, jac, 
+                                       grid_x, grid_y, dt, mu, scaler, max_local_its=10, local_tol=1e-2):
     """
     Assembles the ECSW hyper-reduction training matrix for the POD-GP model.
     Running a non-negative least squares algorithm with an early stopping

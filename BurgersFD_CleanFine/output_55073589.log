@@ -1,0 +1,5 @@
+Loading saved snaps for mu1=4.25, mu2=0.0225
+Generating training block for mu = [4.25, 0.0225]
+Before C as contiguous
+After C as contiguous (4750, 559504)
+Before NNLS (4750,)

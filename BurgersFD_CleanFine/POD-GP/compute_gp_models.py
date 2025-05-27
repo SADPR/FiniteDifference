@@ -228,22 +228,19 @@ def main():
     # -------------------------------------------------------------------------
     # COMMENT THE RBF AND USE A MATÉRN KERNEL INSTEAD
     # -------------------------------------------------------------------------
-    # kernel = ConstantKernel(constant_value=1.0, constant_value_bounds='fixed') * \
-    #          RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e3)) + \
-    #          WhiteKernel(noise_level=1e-5, noise_level_bounds='fixed')
+    #kernel = ConstantKernel(constant_value=1.0, constant_value_bounds=(1e-3, 1e2)) * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level=1e-5, noise_level_bounds=(1e-6, 1e-3))
     #
-    #kernel = ConstantKernel(constant_value=1.0, constant_value_bounds='fixed') * \
-    #         Matern(length_scale=1.0, length_scale_bounds=(1e-2, 1e3), nu=1.5) + \
-    #         WhiteKernel(noise_level=1e-5, noise_level_bounds='fixed')
-    kernel = ConstantKernel(constant_value=1.0, constant_value_bounds=(1e-3, 1e3)) \
-         * Matern(length_scale=1.0, length_scale_bounds=(1e-3, 1e4), nu=1.5) \
-         + WhiteKernel(noise_level=1e-3, noise_level_bounds=(1e-6, 1e-1))
+    #kernel = ConstantKernel(constant_value=1.0, constant_value_bounds=(1e-3,1e2)) * \
+    #         Matern(length_scale=0.5, length_scale_bounds=(1e-2, 5.0), nu=1.5) 
+    kernel = ConstantKernel(constant_value=1.0, constant_value_bounds="fixed")* \
+             Matern(0.5 * np.ones(primary_modes), (1e-2, 5.0), nu=1.5) 
     # -------------------------------------------------------------------------
 
     # Instantiate the base GP regressor
     base_gp = GaussianProcessRegressor(
         kernel=kernel,
-        n_restarts_optimizer=5,
+        alpha=1e-8,
+        n_restarts_optimizer=1,
         optimizer='fmin_l_bfgs_b',
         normalize_y=False
     )
@@ -261,6 +258,8 @@ def main():
     print(f"GP model saved successfully in {gp_models_filename}.")
 
     print("Processing complete.")
+
+    print(base_gp.kernel_.get_params())
 
 if __name__ == '__main__':
     main()

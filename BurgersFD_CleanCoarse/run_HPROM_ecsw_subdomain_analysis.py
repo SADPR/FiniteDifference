@@ -163,7 +163,8 @@ def main(mu1=4.74, mu2=0.02, compute_ecsw=True, num_subdomains=24):
     return elapsed_time_hprom, relative_error, nnls_time, nnls_residual
 
 if __name__ == "__main__":
-    subdomain_list = [1, 2, 4, 8, 12, 16, 20, 24, 48]  # List of subdomains to test
+    #subdomain_list = [1, 2, 4, 8, 12, 16, 20, 24, 48]  # List of subdomains to test
+    subdomain_list = [48,24,20,16,12,8,4,2,1]
 
     for num_subdomains in subdomain_list:
         print(f"\nRunning for {num_subdomains} subdomains...")

@@ -17,6 +17,7 @@ if parent_dir not in sys.path:
 # Import required functions
 from hypernet2D import load_or_compute_snaps, make_2D_grid, plot_snaps
 
+
 # Define RBF kernel functions
 def gaussian_rbf(r, epsilon):
     """Gaussian RBF kernel function."""
@@ -74,7 +75,7 @@ def reconstruct_snapshot_with_global_rbf(snapshot, U_p, U_s, q_p_train, W, scale
 
 if __name__ == '__main__':
     # Define the parameter pair you want to reconstruct and compare
-    target_mu = [4.875, 0.015]  # Example: mu1=5.19, mu2=0.026
+    target_mu = [4.56, 0.019]  # Example: mu1=5.19, mu2=0.026
 
     # Define simulation parameters
     dt = 0.05
@@ -204,18 +205,34 @@ if __name__ == '__main__':
     # Prepare snapshots to plot
     snaps_to_plot = [hdm_snap, pod_rbf_reconstructed]
     labels = ['HDM', 'POD-RBF']
-    colors = ['black', 'green']
-    linewidths = [2, 2]
+    colors = ['black', 'blue']
+    linewidths = [3, 3]
 
     if compare_pod and pod_reconstructed is not None:
         snaps_to_plot.append(pod_reconstructed)
         labels.append('Standard POD')
-        colors.append('blue')
-        linewidths.append(1)
+        colors.append('#9400D3')
+        linewidths.append(3)
 
-    # Plot the comparison using subplots for x and y slices
+    # Apply LaTeX-based font settings
+    plt.rcParams.update({
+        "text.usetex": True,
+        "mathtext.fontset": "stix",
+        "font.family": ["STIXGeneral"]
+    })
+    plt.rc('font', size=13)
+
+    # Create figure and subplots (two rows for X and Y slices)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
 
+    # Add a title with parameters and error info
+    fig.suptitle(
+        f"POD-RBF Projection for $\\mu_1 = {target_mu[0]:.2f}$, $\\mu_2 = {target_mu[1]:.3f}$\n",
+        fontsize=14,
+        y=0.98
+    )
+
+    # Plot the snapshots
     for snap, label, color, lw in zip(snaps_to_plot, labels, colors, linewidths):
         plot_snaps(
             grid_x, grid_y, snap, inds_to_plot,
@@ -225,21 +242,18 @@ if __name__ == '__main__':
             linewidth=lw
         )
 
-    # Print relative errors
-    relative_error = 100 * pod_rbf_error
-    print('Relative error (POD-RBF): {:3.2f}%'.format(relative_error))
+    # Add legends to subplots
+    ax2.legend(loc="center right", fontsize=20, frameon=False)
 
-    if compare_pod and pod_reconstructed is not None:
-        relative_error_pod = 100 * pod_error
-        print('Relative error (Standard POD): {:3.2f}%'.format(relative_error_pod))
+    # Adjust layout to reduce margins
+    fig.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, wspace=0, hspace=0.2)
 
-    # Finalize and save the plot
-    plt.tight_layout()
-    plt.grid(True)
-    plt.legend(loc='upper right')
-    plot_filename = f"plot_mu1_{target_mu[0]:.2f}_mu2_{target_mu[1]:.3f}_n{num_modes}.png"
-    plt.savefig(os.path.join(results_dir, plot_filename), dpi=300)
+    # Save the plot
+    plot_filename = f"mu1_{target_mu[0]:.2f}_mu2_{target_mu[1]:.3f}_pod_rbf_projection.png"
+    plt.savefig(os.path.join(results_dir, plot_filename), dpi=300, bbox_inches='tight', pad_inches=0.1)
+
     print(f"Comparison plot saved successfully to {os.path.join(results_dir, plot_filename)}")
+
 
     # Optionally, display the plot
     # plt.show()

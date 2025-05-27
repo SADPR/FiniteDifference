@@ -93,9 +93,9 @@ def get_snapshot_params():
       mu_samples += [[mu1, mu2]]
   return mu_samples
 
-def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
+def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
 
-    model_path = 'autoenc.pt'
+    model_path = 'autoenc_.pt'
     snap_folder = 'param_snaps'
 
     # Query point of HPROM-ANN
@@ -168,7 +168,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
         #Splitting up C
         combined_weights = []
-        res = Parallel(n_jobs=4, verbose=10)(delayed(nnls)(c, c.sum(axis=1), maxiter=9999999999) for c in np.array_split(C,24,axis=1))
+        res = Parallel(n_jobs=-1, verbose=10)(delayed(nnls)(c, c.sum(axis=1), maxiter=9999999999) for c in np.array_split(C,1,axis=1))
         for wi in res:
             combined_weights += [wi[0]]
         weights = np.hstack(combined_weights)
@@ -199,12 +199,13 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
         plt.tight_layout()
         plt.savefig('prom-reduced-mesh.png', dpi=300)
     else:
-        weights = np.load('ecsw_weights_rnm_ecm.npy')
+        weights = np.load('ecsw_weights_hrnm_domain_decomposition.npy')#'ecsw_weights_rnm.npy')
     print('N_e = {}'.format(np.sum(weights > 0)))
     #END ECSW
 
     # Time-stepping to compute the HPROM-ANN at the out-of-sample parameter point
     t0 = time.time()
+    q_snaps = basis.T@hdm_snaps
     ys, man_times = inviscid_burgers_rnm2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu_rom_backup, rnm, ref, basis, basis2, weights)
     man_its, man_jac, man_res, man_ls = man_times
     elapsed_time = time.time() - t0
@@ -227,7 +228,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
     hdm_snaps = load_or_compute_snaps(mu_rom, grid_x, grid_y, w0, dt, num_steps, snap_folder=snap_folder)
 
     # Commented section for visualization (plotting)
-    
+  
     inds_to_plot = range(0, 501, 100)
     snaps_to_plot = [hdm_snaps, man_snaps]
     labels = ['HDM', 'HPROM-ANN']
@@ -237,23 +238,74 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
     ax1.legend(), ax2.legend()
     plt.tight_layout()
-    save_path = f'dd_hprom-ann_{mu_rom[0]:.2f}_{mu_rom[1]:.3f}_n{sizes[0]}_nbar{sizes[1]-sizes[0]}.png'
+    save_path = f'pod_ann_hprom_snaps_mu1_{mu_rom[0]:.2f}_{mu_rom[1]:.3f}_n{sizes[0]}_nbar{sizes[1]-sizes[0]}.png'
     print(f'Saving as "{save_path}"')
     plt.savefig(save_path, dpi=300)
     plt.show()
-    
     
 
     # Print timings for the steps
     print(f'rnm_its: {man_its:.2f}, rnm_jac: {man_jac:.2f}, rnm_res: {man_res:.2f}, rnm_ls: {man_ls:.2f}')
 
     # Save the HRNM snapshot to a file
-    np.save(f'dd_hrnm_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy', man_snaps)
-    print(f'Snapshot saved as hrnm_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy')
+    np.save(f'pod_ann_hprom_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy', man_snaps)
+    print(f'Snapshot saved as pod_ann_hprom_snaps_mu1_{mu1:.2f}_mu2_{mu2:.3f}.npy')
 
     # Compute and print the relative error
     relative_error = 100 * np.linalg.norm(hdm_snaps - man_snaps) / np.linalg.norm(hdm_snaps)
     print(f'Relative error: {relative_error:.2f}%')
+
+    ############################################################################
+    # ADDED CODE: Create animation overlaying HDM and POD-RBF using FuncAnimation
+    ############################################################################
+    import matplotlib.animation as animation
+
+    # We'll create a figure and reuse it for each frame
+    fig_anim, (ax1_anim, ax2_anim) = plt.subplots(2, 1, figsize=(10, 8))
+
+    # We define the data sets and labeling for overlay
+    snaps_to_plot_anim = [hdm_snaps, man_snaps]
+    labels_anim = ['HDM', 'POD-ANN HPROM']
+    colors_anim = ['black', 'green']
+    linewidths_anim = [2, 2]
+
+    def animate_func(frame_idx):
+        print(f"Processing frame {frame_idx + 1}...")
+        ax1_anim.clear()
+        ax2_anim.clear()
+
+        # Fix the y-limits for both subplots
+        ax1_anim.set_ylim(0, 6.5)
+        ax2_anim.set_ylim(0, 6.5)
+
+        # Overlay both HDM & POD-RBF for this single time index 'frame_idx'
+        for i, each_snaps in enumerate(snaps_to_plot_anim):
+            plot_snaps(
+                grid_x, grid_y,
+                each_snaps, [frame_idx],  # single time index
+                label=labels_anim[i],
+                fig_ax=(fig_anim, ax1_anim, ax2_anim),
+                color=colors_anim[i],
+                linewidth=linewidths_anim[i]
+            )
+        ax1_anim.legend()
+        ax2_anim.legend()
+        ax1_anim.set_title(f'Timestep = {frame_idx}')
+
+    save_gif = False
+    if save_gif:
+        anim = animation.FuncAnimation(
+            fig_anim, animate_func,
+            frames=range(num_steps),
+            interval=300,  # ms between frames
+            blit=False,
+            repeat=False
+        )
+
+        # Save the animation as a GIF with 30 FPS
+        anim_filename = f'pod_ann_hprom_global_{mu_rom[0]:.2f}_{mu_rom[1]:.3f}.gif'
+        anim.save(anim_filename, writer='imagemagick', fps=30)
+        print(f"Saved animation '{anim_filename}' with overlay of HDM & POD-RBF at each timestep.")
 
     # Return elapsed time and relative error
     return elapsed_time, relative_error

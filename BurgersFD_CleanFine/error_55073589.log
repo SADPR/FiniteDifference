@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/scratch/users/sadpr/BurgersFD_CleanFine/run_HPROM.py", line 158, in <module>
+    main(mu1 = 4.75, mu2= 0.02)
+  File "/scratch/users/sadpr/BurgersFD_CleanFine/run_HPROM.py", line 89, in main
+    reg_nnls.fit(C, b)  # Directly passing the target as C.sum(axis=1)
+  File "/home/users/sadpr/myenv/lib/python3.9/site-packages/sklearn/base.py", line 1473, in wrapper
+    return fit_method(estimator, *args, **kwargs)
+  File "/home/users/sadpr/myenv/lib/python3.9/site-packages/sklearn/linear_model/_base.py", line 647, in fit
+    self.coef_ = optimize.nnls(X, y)[0]
+  File "/home/users/sadpr/myenv/lib/python3.9/site-packages/scipy/optimize/_nnls.py", line 91, in nnls
+    x, rnorm, mode = _nnls(A, b, maxiter, tol=atol)
+  File "/home/users/sadpr/myenv/lib/python3.9/site-packages/scipy/optimize/_nnls.py", line 105, in _nnls
+    AtA = A.T @ A
+numpy._core._exceptions.MemoryError: Unable to allocate 2.28 TiB for an array with shape (559504, 559504) and data type float64

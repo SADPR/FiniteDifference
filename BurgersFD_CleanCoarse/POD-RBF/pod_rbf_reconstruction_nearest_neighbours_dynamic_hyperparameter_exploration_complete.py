@@ -183,12 +183,12 @@ def find_best_parameters_per_snapshot(epsilon_values, neighbor_values, kernel_ty
 # Main function
 if __name__ == '__main__':
     # Define the parameter pair you want to reconstruct and compare
-    target_mu = [4.56, 0.019]  # Example: mu1=4.56, mu2=0.019
+    target_mu = [4.75, 0.02]  # Example: mu1=4.56, mu2=0.019
 
     # Define simulation parameters
     dt = 0.05
     num_steps = 500
-    num_cells_x, num_cells_y = 250, 250
+    num_cells_x, num_cells_y = 750, 750
     xl, xu, yl, yu = 0, 100, 0, 100
     grid_x, grid_y = make_2D_grid(xl, xu, yl, yu, num_cells_x, num_cells_y)
 
@@ -236,7 +236,7 @@ if __name__ == '__main__':
         exit(1)
 
     r = 10  # Number of primary modes used
-    kernel_types = ["inverse_multiquadric"]
+    kernel_types = ["gaussian","inverse_multiquadric","linear"]
 
     # Define ranges for epsilon and neighbor values
     epsilon_values = [0.1, 0.02, 0.01, 0.001, 0.0001]

@@ -29,7 +29,7 @@ def main(mu1= 4.75, mu2=0.02, compute_ecsw = False):
 
     dt = 0.05
     num_steps = 500
-    num_cells_x, num_cells_y = 750, 750
+    num_cells_x, num_cells_y = 250, 250
     xl, xu, yl, yu = 0, 100, 0, 100
     grid_x, grid_y = make_2D_grid(xl, xu, yl, yu, num_cells_x, num_cells_y)
     u0 = np.ones((num_cells_y, num_cells_x))
@@ -73,14 +73,14 @@ def main(mu1= 4.75, mu2=0.02, compute_ecsw = False):
         idxs[nn_y:-nn_y, nn_xl:-nn_xr] = 1
 
         # Larger weighting for boundary terms due to the Dirichlet boundary condition
-        bc_w = 10
+        bc_w = 50
         C_cor = bc_w * C[:, (idxs == 0).ravel()]
         C = C[:, (idxs == 1).ravel()]
 
         t1 = time.time()
         C = np.ascontiguousarray(C, dtype=np.float64)
         combined_weights = []
-        res = Parallel(n_jobs=-1, verbose=10)(delayed(nnls)(c, c.sum(axis=1), maxiter=9999999999) for c in np.array_split(C,20,axis=1))
+        res = Parallel(n_jobs=-1, verbose=10)(delayed(nnls)(c, c.sum(axis=1), maxiter=9999999999) for c in np.array_split(C,1,axis=1))
         for wi in res:
             combined_weights += [wi[0]]
         weights = np.hstack(combined_weights)
@@ -97,20 +97,20 @@ def main(mu1= 4.75, mu2=0.02, compute_ecsw = False):
         #full_weights = np.ones((num_cells_y, num_cells_x)) * weights.sum() / 100
         full_weights[idxs > 0] = weights.ravel()
         weights = full_weights.ravel()
-        np.save('ecsw_weights_lspg_domain_decomposition', weights)
+        np.save('ecsw_weights_lspg', weights)
         plt.rcParams.update({
           "text.usetex": True,
           "mathtext.fontset": "stix",
           "font.family": ["STIXGeneral"]})
         plt.rc('font', size=16)
-        plt.spy(weights.reshape((750, 750)))
+        plt.spy(weights.reshape((250, 250)))
         plt.xlabel('$x$ cell index')
         plt.ylabel('$y$ cell index')
         plt.title('PROM Reduced Mesh')
         plt.tight_layout()
         plt.savefig('prom-reduced-mesh.png', dpi=300)   
     else:
-        weights = np.load('ecsw_weights_lspg_domain_decomposition.npy')
+        weights = np.load('ecsw_weights_lspg.npy')
     print('N_e = {}'.format(np.sum(weights > 0)))
 
     # Time-stepping to compute the HPROM at the out-of-sample parameter point
@@ -151,4 +151,4 @@ def main(mu1= 4.75, mu2=0.02, compute_ecsw = False):
 
 
 if __name__ == "__main__":
-    main(mu1 = 4.75, mu2= 0.02, compute_ecsw=False)
+    main(mu1 = 5.19, mu2= 0.026, compute_ecsw=False)

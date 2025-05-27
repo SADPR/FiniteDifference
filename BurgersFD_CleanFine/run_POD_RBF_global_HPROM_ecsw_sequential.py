@@ -100,14 +100,14 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
         nn_xl = 1
         nn_xr = 1
         nn_y = 1
-        bc_w = 10
+        bc_w = 50
         idxs[nn_y:-nn_y, nn_xl:-nn_xr] = 1
         # idxs[:, nn_xl:] = 1
         C_cor = bc_w * C[:, (idxs == 0).ravel()]
         C = C[:, (idxs == 1).ravel()]
 
         t1 = time.time()
-        num_subdomains = 4
+        num_subdomains = 12
         combined_weights = []
 
         # Split C into `num_subdomains` parts

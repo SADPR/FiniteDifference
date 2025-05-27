@@ -127,11 +127,10 @@ def main(mu1= 4.75, mu2=0.02, compute_ecsw = False):
     rom_snaps = basis_trunc @ rom_y
 
     # Save the HPROM snapshots
-    np.save(f'dd_hprom_snaps_mu1_{mu_rom[0]:.2f}_mu2_{mu_rom[1]:.3f}.npy', rom_snaps)
-    print(f'Snapshot saved as hprom_snaps_mu1_{mu_rom[0]:.2f}_mu2_{mu_rom[1]:.3f}.npy')
+    np.save(f'hprom_snaps_mu1_{mu_rom[0]:.3f}_mu2_{mu_rom[1]:.4f}.npy', rom_snaps)
+    print(f'Snapshot saved as hprom_snaps_mu1_{mu_rom[0]:.3f}_mu2_{mu_rom[1]:.4f}.npy')
 
     # Commented section for visualization (plotting)
-    '''
     snaps_to_plot = range(0, 501, 100)  # Select snapshots at specific time intervals to plot
     fig, ax1, ax2 = plot_snaps(grid_x, grid_y, hdm_snaps, snaps_to_plot, label='HDM')
     plot_snaps(grid_x, grid_y, rom_snaps, snaps_to_plot, label='HPROM', fig_ax=(fig, ax1, ax2), color='blue', linewidth=1)
@@ -139,8 +138,7 @@ def main(mu1= 4.75, mu2=0.02, compute_ecsw = False):
     # Add legends and save the plot
     ax1.legend(), ax2.legend()
     plt.tight_layout()
-    plt.savefig('dd_hprom_mu_{:1.2e}_{:1.2e}.png'.format(mu_rom[0], mu_rom[1]), dpi=300)
-    '''
+    plt.savefig('hprom_mu_{:1.2e}_{:1.2e}.png'.format(mu_rom[0], mu_rom[1]), dpi=300)
 
     # Compute and print the relative error
     relative_error = 100 * np.linalg.norm(hdm_snaps - rom_snaps) / np.linalg.norm(hdm_snaps)
@@ -151,4 +149,4 @@ def main(mu1= 4.75, mu2=0.02, compute_ecsw = False):
 
 
 if __name__ == "__main__":
-    main(mu1 = 4.75, mu2= 0.02, compute_ecsw=False)
+    main(mu1 = 4.875, mu2= 0.015, compute_ecsw=False)

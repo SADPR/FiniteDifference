@@ -176,7 +176,7 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
             print(f"Processing block {i + 1}/{len(C_blocks)}")
             
             # Perform NNLS for the current block
-            block_weights, _ = nnls(c_block, c_block.sum(axis=1), maxiter=9999999999)
+            block_weights, _ = nnls(c_block, c_block.sum(axis=1), atol=1e-8)
             combined_weights.append(block_weights)
 
         # Combine weights from all blocks

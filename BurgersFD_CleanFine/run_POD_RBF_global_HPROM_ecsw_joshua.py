@@ -138,7 +138,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
     q_snaps = U_p.T@hdm_snaps
     pod_rbf_prom_q_p_snaps, man_times = inviscid_burgers_pod_rbf_2D_global_ecsw(
         GRID_X, GRID_Y, W0, DT, NUM_STEPS, mu_rom, U_p, U_s,
-        W_global, q_p_train, q_s_train, weights, epsilon, scaler, kernel_type=kernel_name
+        W_global, q_p_train, q_s_train, weights, epsilon, scaler, q_snaps, kernel_type=kernel_name
     )
     
     elapsed_time = time.time() - t0
@@ -236,4 +236,4 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
 
 
 if __name__ == "__main__":
-    main(mu1=4.75, mu2=0.02, compute_ecsw=False, save_npy=False, save_plot=True)
+   main(mu1=5.19, mu2=0.026, compute_ecsw=True, save_npy=False, save_plot=True)

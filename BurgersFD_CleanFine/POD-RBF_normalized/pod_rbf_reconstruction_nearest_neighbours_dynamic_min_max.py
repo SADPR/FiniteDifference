@@ -184,7 +184,7 @@ def compare_snaps(snaps_to_plot, inds_to_plot, labels, colors, linewidths):
 
 if __name__ == '__main__':
     # Define the parameter pair you want to reconstruct and compare
-    target_mu = [5.19, 0.026]  # Example: mu1=5.19, mu2=0.026
+    target_mu = [4.75, 0.02]  # Example: mu1=5.19, mu2=0.026
 
     # Define simulation parameters
     dt = 0.05
@@ -245,8 +245,8 @@ if __name__ == '__main__':
         print("Scaler file 'modes/scaler.pkl' not found.")
         exit(1)
 
-    epsilon = 2
-    neighbors = 10
+    epsilon = 0.01
+    neighbors = 20
     r = 10  # Number of primary modes used
     num_modes = 150
 
@@ -274,12 +274,12 @@ if __name__ == '__main__':
 
     pod_rbf_file_path = os.path.join(results_dir, f"reconstructed_snapshot_pod_rbf_mu1_{target_mu[0]}_mu2_{target_mu[1]}.npy")
     #np.save(pod_rbf_file_path, pod_rbf_reconstructed)
-    #print(f"POD-RBF reconstructed snapshot saved successfully to {pod_rbf_file_path}")
+    print(f"POD-RBF reconstructed snapshot saved successfully to {pod_rbf_file_path}")
 
     if compare_pod:
         pod_file_path = os.path.join(results_dir, f"reconstructed_snapshot_pod_mu1_{target_mu[0]}_mu2_{target_mu[1]}.npy")
         #np.save(pod_file_path, pod_reconstructed)
-        #print(f"Standard POD reconstructed snapshot saved successfully to {pod_file_path}")
+        print(f"Standard POD reconstructed snapshot saved successfully to {pod_file_path}")
 
     # Calculate and compare reconstruction errors
     pod_rbf_error = np.linalg.norm(hdm_snap - pod_rbf_reconstructed) / np.linalg.norm(hdm_snap)
@@ -330,7 +330,6 @@ if __name__ == '__main__':
 
     # Finalize and save the plot
     plt.tight_layout()
-    plt.grid(True)
     plt.legend(loc='upper right')
     plot_filename = f"plot_mu1_{target_mu[0]:.2f}_mu2_{target_mu[1]:.3f}_n{num_modes}_neighbors{neighbors}.png"
     plt.savefig(os.path.join(results_dir, plot_filename), dpi=300)
@@ -338,4 +337,3 @@ if __name__ == '__main__':
 
     # Optionally, display the plot
     # plt.show()
-    

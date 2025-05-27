@@ -117,7 +117,7 @@ def build_kdtree_and_save_data(q_p, q_s, filename):
     print("Building KDTree...")
     kdtree_start_time = time.time()
     kdtree = KDTree(q_p_unique.T)
-    print(f"KDTree construction took {time.time() - kdtree_start_time:.2f} seconds.")
+    print(f"KDTree construction took {time.time() - kdtree_start_time:.4f} seconds.")
     
     # Step 3: Save the KDTree and q_p, q_s data for future interpolation
     with open(filename, 'wb') as f:

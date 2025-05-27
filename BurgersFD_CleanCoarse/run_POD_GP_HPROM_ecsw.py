@@ -86,11 +86,8 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
             snaps = mu_snaps[:, 1::snap_sample_factor]
 
             print(f'Generating training block for mu = {mu}')
-            # CHANGED: was compute_ECSW_training_matrix_2D_rbf_global
             Ci = compute_ECSW_training_matrix_2D_gp(
                 snaps, prev_snaps, U_p, U_s, gp_model,
-                # Keep q_p_train, q_s_train, etc. if your new approach still needs them:
-                None, None,  # placeholders if you no longer use them
                 inviscid_burgers_res2D, inviscid_burgers_exact_jac2D,
                 GRID_X, GRID_Y, DT, mu, scaler
             )
@@ -115,8 +112,8 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
         # Splitting up C
         combined_weights = []
         res = Parallel(n_jobs=-1, verbose=10)(
-            delayed(nnls)(c, c.sum(axis=1), maxiter=9999999999)
-            for c in np.array_split(C, 10, axis=1)
+            delayed(nnls)(c, c.sum(axis=1), maxiter=9999999999, atol=1e-10)
+            for c in np.array_split(C, 1, axis=1)
         )
         for wi in res:
             combined_weights += [wi[0]]
@@ -133,6 +130,17 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False, save_npy=False, save_plot=Fals
         full_weights[idxs > 0] = weights.ravel()
         weights = full_weights.ravel()
         np.save(os.path.join(model_dir, 'ecsw_weights_gp.npy'), weights)
+        plt.clf()
+        plt.rcParams.update({
+            "text.usetex": True,
+            "mathtext.fontset": "stix",
+            "font.family": ["STIXGeneral"]})
+        plt.rc('font', size=16)
+        plt.spy(weights.reshape((NUM_CELLS, NUM_CELLS)))
+        plt.xlabel('$x$ cell index')
+        plt.ylabel('$y$ cell index')
+        plt.tight_layout()
+        plt.savefig('ecsw_gp_reduced_mesh.png', dpi=300)
     else:
         weights = np.load(os.path.join(model_dir, 'ecsw_weights_gp.npy'))
 

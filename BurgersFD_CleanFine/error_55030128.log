@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/scratch/users/sadpr/BurgersFD_CleanFine/train_reduced_manifold_autoencoder.py", line 214, in <module>
+    main(compute_basis=False)
+  File "/scratch/users/sadpr/BurgersFD_CleanFine/train_reduced_manifold_autoencoder.py", line 119, in main
+    basis = np.load('basis.npy', allow_pickle=True)
+  File "/home/users/sadpr/myenv/lib/python3.9/site-packages/numpy/lib/_npyio_impl.py", line 455, in load
+    fid = stack.enter_context(open(os.fspath(file), "rb"))
+FileNotFoundError: [Errno 2] No such file or directory: 'basis.npy'

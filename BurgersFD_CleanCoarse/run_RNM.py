@@ -49,7 +49,7 @@ def load_autoencoder_monitor(model_path, device, plot=False):
   sizes = np.load('sizes.npy', allow_pickle=True)
 
   print(sizes)
-  rnm = RNM_NN(sizes[0]+2, sizes[1]-sizes[0]).to(device)
+  rnm = RNM_NN(sizes[0], sizes[1]-sizes[0]).to(device)
   opt = optim.Adam(rnm.parameters(), lr=LR_INIT)
   scheduler = optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.1,
                                                    patience=LR_PATIENCE, verbose=True)
@@ -82,7 +82,7 @@ def compare_snaps(snaps_to_plot, inds_to_plot, labels, colors, linewidths):
 
 def main(mu1=4.75, mu2=0.02):
 
-    model_path = 'autoenc_.pt'
+    model_path = 'autoenc.pt'
     snap_folder = 'param_snaps'
 
     mu_rom = [mu1, mu2]
@@ -132,7 +132,7 @@ def main(mu1=4.75, mu2=0.02):
     print(f'rnm_its: {rnm_its:.2f}, rnm_jac: {rnm_jac:.2f}, rnm_res: {rnm_res:.2f}, rnm_ls: {rnm_ls:.2f}')
 
     # Plot and compare snapshots (currently commented out)
-
+    '''
     inds_to_plot = range(0, num_steps + 1, 100)
     snaps_to_plot = [hdm_snaps, rnm_snaps]
     labels = ['HDM', 'PROM-NN']
@@ -144,7 +144,7 @@ def main(mu1=4.75, mu2=0.02):
     plt.grid()
     plt.legend(loc=2)
     plt.savefig(f'plot_{mu_rom[0]:.2f}_{mu_rom[1]:.3f}_n{sizes[0]}_nbar{sizes[1]-sizes[0]}.png', dpi=300)
-    
+    '''
 
     # Return elapsed time and relative error
     return elapsed_time, relative_error

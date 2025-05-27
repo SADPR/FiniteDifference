@@ -1,0 +1,1005 @@
+Loading saved snaps for mu1=4.75, mu2=0.02
+mu1: 4.75, epsilon: 0.01, neighbors: 100
+ ... Working on timestep 0
+2 iterations: 6.08e-01 relative norm
+ ... Working on timestep 1
+2 iterations: 4.58e-01 relative norm
+ ... Working on timestep 2
+3 iterations: 2.50e-01 relative norm
+ ... Working on timestep 3
+3 iterations: 4.93e-01 relative norm
+ ... Working on timestep 4
+3 iterations: 5.24e-01 relative norm
+ ... Working on timestep 5
+3 iterations: 4.10e-01 relative norm
+ ... Working on timestep 6
+3 iterations: 2.26e-01 relative norm
+ ... Working on timestep 7
+3 iterations: 2.27e-01 relative norm
+ ... Working on timestep 8
+3 iterations: 3.58e-01 relative norm
+ ... Working on timestep 9
+2 iterations: 3.81e-01 relative norm
+ ... Working on timestep 10
+2 iterations: 3.02e-01 relative norm
+ ... Working on timestep 11
+2 iterations: 2.16e-01 relative norm
+ ... Working on timestep 12
+2 iterations: 2.83e-01 relative norm
+ ... Working on timestep 13
+2 iterations: 3.63e-01 relative norm
+ ... Working on timestep 14
+2 iterations: 3.45e-01 relative norm
+ ... Working on timestep 15
+3 iterations: 2.47e-01 relative norm
+ ... Working on timestep 16
+3 iterations: 2.16e-01 relative norm
+ ... Working on timestep 17
+3 iterations: 3.12e-01 relative norm
+ ... Working on timestep 18
+3 iterations: 3.49e-01 relative norm
+ ... Working on timestep 19
+2 iterations: 3.13e-01 relative norm
+ ... Working on timestep 20
+3 iterations: 2.06e-01 relative norm
+ ... Working on timestep 21
+3 iterations: 2.87e-01 relative norm
+ ... Working on timestep 22
+3 iterations: 3.30e-01 relative norm
+ ... Working on timestep 23
+3 iterations: 2.80e-01 relative norm
+ ... Working on timestep 24
+3 iterations: 1.96e-01 relative norm
+ ... Working on timestep 25
+3 iterations: 2.04e-01 relative norm
+ ... Working on timestep 26
+3 iterations: 2.58e-01 relative norm
+ ... Working on timestep 27
+3 iterations: 2.44e-01 relative norm
+ ... Working on timestep 28
+3 iterations: 2.01e-01 relative norm
+ ... Working on timestep 29
+2 iterations: 2.31e-01 relative norm
+ ... Working on timestep 30
+2 iterations: 2.86e-01 relative norm
+ ... Working on timestep 31
+2 iterations: 2.72e-01 relative norm
+ ... Working on timestep 32
+3 iterations: 2.07e-01 relative norm
+ ... Working on timestep 33
+3 iterations: 2.05e-01 relative norm
+ ... Working on timestep 34
+2 iterations: 2.53e-01 relative norm
+ ... Working on timestep 35
+2 iterations: 2.48e-01 relative norm
+ ... Working on timestep 36
+2 iterations: 2.12e-01 relative norm
+ ... Working on timestep 37
+2 iterations: 2.40e-01 relative norm
+ ... Working on timestep 38
+2 iterations: 2.86e-01 relative norm
+ ... Working on timestep 39
+2 iterations: 2.75e-01 relative norm
+ ... Working on timestep 40
+2 iterations: 2.15e-01 relative norm
+ ... Working on timestep 41
+2 iterations: 2.22e-01 relative norm
+ ... Working on timestep 42
+2 iterations: 2.65e-01 relative norm
+ ... Working on timestep 43
+2 iterations: 2.55e-01 relative norm
+ ... Working on timestep 44
+2 iterations: 2.21e-01 relative norm
+ ... Working on timestep 45
+2 iterations: 2.49e-01 relative norm
+ ... Working on timestep 46
+2 iterations: 2.93e-01 relative norm
+ ... Working on timestep 47
+2 iterations: 2.76e-01 relative norm
+ ... Working on timestep 48
+2 iterations: 2.20e-01 relative norm
+ ... Working on timestep 49
+2 iterations: 2.20e-01 relative norm
+ ... Working on timestep 50
+2 iterations: 2.61e-01 relative norm
+ ... Working on timestep 51
+2 iterations: 2.55e-01 relative norm
+ ... Working on timestep 52
+2 iterations: 2.19e-01 relative norm
+ ... Working on timestep 53
+2 iterations: 2.38e-01 relative norm
+ ... Working on timestep 54
+2 iterations: 2.82e-01 relative norm
+ ... Working on timestep 55
+2 iterations: 2.71e-01 relative norm
+ ... Working on timestep 56
+2 iterations: 2.19e-01 relative norm
+ ... Working on timestep 57
+2 iterations: 2.15e-01 relative norm
+ ... Working on timestep 58
+2 iterations: 2.56e-01 relative norm
+ ... Working on timestep 59
+2 iterations: 2.52e-01 relative norm
+ ... Working on timestep 60
+2 iterations: 2.15e-01 relative norm
+ ... Working on timestep 61
+2 iterations: 2.29e-01 relative norm
+ ... Working on timestep 62
+2 iterations: 2.72e-01 relative norm
+ ... Working on timestep 63
+2 iterations: 2.64e-01 relative norm
+ ... Working on timestep 64
+2 iterations: 2.16e-01 relative norm
+ ... Working on timestep 65
+2 iterations: 2.13e-01 relative norm
+ ... Working on timestep 66
+2 iterations: 2.52e-01 relative norm
+ ... Working on timestep 67
+2 iterations: 2.48e-01 relative norm
+ ... Working on timestep 68
+2 iterations: 2.12e-01 relative norm
+ ... Working on timestep 69
+2 iterations: 2.26e-01 relative norm
+ ... Working on timestep 70
+2 iterations: 2.65e-01 relative norm
+ ... Working on timestep 71
+2 iterations: 2.58e-01 relative norm
+ ... Working on timestep 72
+2 iterations: 2.20e-01 relative norm
+ ... Working on timestep 73
+3 iterations: 2.75e-01 relative norm
+ ... Working on timestep 74
+4 iterations: 2.61e-01 relative norm
+ ... Working on timestep 75
+2 iterations: 2.33e-01 relative norm
+ ... Working on timestep 76
+2 iterations: 1.96e-01 relative norm
+ ... Working on timestep 77
+2 iterations: 2.08e-01 relative norm
+ ... Working on timestep 78
+2 iterations: 2.51e-01 relative norm
+ ... Working on timestep 79
+2 iterations: 2.45e-01 relative norm
+ ... Working on timestep 80
+2 iterations: 2.03e-01 relative norm
+ ... Working on timestep 81
+2 iterations: 2.07e-01 relative norm
+ ... Working on timestep 82
+2 iterations: 2.45e-01 relative norm
+ ... Working on timestep 83
+2 iterations: 2.40e-01 relative norm
+ ... Working on timestep 84
+2 iterations: 2.05e-01 relative norm
+ ... Working on timestep 85
+2 iterations: 2.17e-01 relative norm
+ ... Working on timestep 86
+2 iterations: 2.56e-01 relative norm
+ ... Working on timestep 87
+2 iterations: 2.52e-01 relative norm
+ ... Working on timestep 88
+2 iterations: 2.13e-01 relative norm
+ ... Working on timestep 89
+2 iterations: 2.13e-01 relative norm
+ ... Working on timestep 90
+2 iterations: 2.49e-01 relative norm
+ ... Working on timestep 91
+2 iterations: 2.50e-01 relative norm
+ ... Working on timestep 92
+2 iterations: 2.17e-01 relative norm
+ ... Working on timestep 93
+2 iterations: 2.18e-01 relative norm
+ ... Working on timestep 94
+2 iterations: 2.55e-01 relative norm
+ ... Working on timestep 95
+2 iterations: 2.60e-01 relative norm
+ ... Working on timestep 96
+2 iterations: 2.27e-01 relative norm
+ ... Working on timestep 97
+2 iterations: 2.17e-01 relative norm
+ ... Working on timestep 98
+2 iterations: 2.52e-01 relative norm
+ ... Working on timestep 99
+2 iterations: 2.65e-01 relative norm
+ ... Working on timestep 100
+2 iterations: 2.38e-01 relative norm
+ ... Working on timestep 101
+2 iterations: 2.21e-01 relative norm
+ ... Working on timestep 102
+2 iterations: 2.52e-01 relative norm
+ ... Working on timestep 103
+2 iterations: 2.74e-01 relative norm
+ ... Working on timestep 104
+2 iterations: 2.52e-01 relative norm
+ ... Working on timestep 105
+2 iterations: 2.21e-01 relative norm
+ ... Working on timestep 106
+2 iterations: 2.37e-01 relative norm
+ ... Working on timestep 107
+2 iterations: 2.67e-01 relative norm
+ ... Working on timestep 108
+2 iterations: 2.57e-01 relative norm
+ ... Working on timestep 109
+2 iterations: 2.23e-01 relative norm
+ ... Working on timestep 110
+2 iterations: 2.21e-01 relative norm
+ ... Working on timestep 111
+2 iterations: 2.52e-01 relative norm
+ ... Working on timestep 112
+2 iterations: 2.56e-01 relative norm
+ ... Working on timestep 113
+2 iterations: 2.26e-01 relative norm
+ ... Working on timestep 114
+2 iterations: 2.07e-01 relative norm
+ ... Working on timestep 115
+2 iterations: 2.31e-01 relative norm
+ ... Working on timestep 116
+2 iterations: 2.47e-01 relative norm
+ ... Working on timestep 117
+2 iterations: 2.28e-01 relative norm
+ ... Working on timestep 118
+2 iterations: 2.04e-01 relative norm
+ ... Working on timestep 119
+2 iterations: 2.19e-01 relative norm
+ ... Working on timestep 120
+2 iterations: 2.44e-01 relative norm
+ ... Working on timestep 121
+2 iterations: 2.36e-01 relative norm
+ ... Working on timestep 122
+2 iterations: 2.07e-01 relative norm
+ ... Working on timestep 123
+2 iterations: 2.06e-01 relative norm
+ ... Working on timestep 124
+2 iterations: 2.32e-01 relative norm
+ ... Working on timestep 125
+2 iterations: 2.37e-01 relative norm
+ ... Working on timestep 126
+2 iterations: 2.13e-01 relative norm
+ ... Working on timestep 127
+2 iterations: 2.02e-01 relative norm
+ ... Working on timestep 128
+2 iterations: 2.27e-01 relative norm
+ ... Working on timestep 129
+2 iterations: 2.43e-01 relative norm
+ ... Working on timestep 130
+2 iterations: 2.24e-01 relative norm
+ ... Working on timestep 131
+2 iterations: 2.00e-01 relative norm
+ ... Working on timestep 132
+2 iterations: 2.13e-01 relative norm
+ ... Working on timestep 133
+2 iterations: 2.37e-01 relative norm
+ ... Working on timestep 134
+2 iterations: 2.31e-01 relative norm
+ ... Working on timestep 135
+2 iterations: 2.05e-01 relative norm
+ ... Working on timestep 136
+2 iterations: 2.06e-01 relative norm
+ ... Working on timestep 137
+2 iterations: 2.35e-01 relative norm
+ ... Working on timestep 138
+2 iterations: 2.40e-01 relative norm
+ ... Working on timestep 139
+2 iterations: 2.13e-01 relative norm
+ ... Working on timestep 140
+2 iterations: 1.98e-01 relative norm
+ ... Working on timestep 141
+2 iterations: 2.23e-01 relative norm
+ ... Working on timestep 142
+2 iterations: 2.41e-01 relative norm
+ ... Working on timestep 143
+2 iterations: 2.24e-01 relative norm
+ ... Working on timestep 144
+2 iterations: 1.99e-01 relative norm
+ ... Working on timestep 145
+2 iterations: 2.16e-01 relative norm
+ ... Working on timestep 146
+2 iterations: 2.45e-01 relative norm
+ ... Working on timestep 147
+2 iterations: 2.38e-01 relative norm
+ ... Working on timestep 148
+2 iterations: 2.06e-01 relative norm
+ ... Working on timestep 149
+2 iterations: 2.04e-01 relative norm
+ ... Working on timestep 150
+2 iterations: 2.36e-01 relative norm
+ ... Working on timestep 151
+2 iterations: 2.44e-01 relative norm
+ ... Working on timestep 152
+2 iterations: 2.16e-01 relative norm
+ ... Working on timestep 153
+2 iterations: 2.02e-01 relative norm
+ ... Working on timestep 154
+2 iterations: 2.36e-01 relative norm
+ ... Working on timestep 155
+2 iterations: 2.59e-01 relative norm
+ ... Working on timestep 156
+2 iterations: 2.38e-01 relative norm
+ ... Working on timestep 157
+2 iterations: 2.04e-01 relative norm
+ ... Working on timestep 158
+2 iterations: 2.16e-01 relative norm
+ ... Working on timestep 159
+2 iterations: 2.48e-01 relative norm
+ ... Working on timestep 160
+2 iterations: 2.44e-01 relative norm
+ ... Working on timestep 161
+2 iterations: 2.10e-01 relative norm
+ ... Working on timestep 162
+2 iterations: 2.09e-01 relative norm
+ ... Working on timestep 163
+2 iterations: 2.47e-01 relative norm
+ ... Working on timestep 164
+2 iterations: 2.58e-01 relative norm
+ ... Working on timestep 165
+2 iterations: 2.26e-01 relative norm
+ ... Working on timestep 166
+2 iterations: 1.99e-01 relative norm
+ ... Working on timestep 167
+2 iterations: 2.29e-01 relative norm
+ ... Working on timestep 168
+2 iterations: 2.60e-01 relative norm
+ ... Working on timestep 169
+2 iterations: 2.44e-01 relative norm
+ ... Working on timestep 170
+2 iterations: 2.05e-01 relative norm
+ ... Working on timestep 171
+2 iterations: 2.10e-01 relative norm
+ ... Working on timestep 172
+2 iterations: 2.48e-01 relative norm
+ ... Working on timestep 173
+2 iterations: 2.52e-01 relative norm
+ ... Working on timestep 174
+2 iterations: 2.17e-01 relative norm
+ ... Working on timestep 175
+2 iterations: 1.98e-01 relative norm
+ ... Working on timestep 176
+2 iterations: 2.34e-01 relative norm
+ ... Working on timestep 177
+2 iterations: 2.59e-01 relative norm
+ ... Working on timestep 178
+2 iterations: 2.38e-01 relative norm
+ ... Working on timestep 179
+2 iterations: 2.01e-01 relative norm
+ ... Working on timestep 180
+2 iterations: 2.18e-01 relative norm
+ ... Working on timestep 181
+2 iterations: 2.60e-01 relative norm
+ ... Working on timestep 182
+2 iterations: 2.63e-01 relative norm
+ ... Working on timestep 183
+2 iterations: 2.22e-01 relative norm
+ ... Working on timestep 184
+2 iterations: 1.97e-01 relative norm
+ ... Working on timestep 185
+2 iterations: 2.28e-01 relative norm
+ ... Working on timestep 186
+2 iterations: 2.55e-01 relative norm
+ ... Working on timestep 187
+2 iterations: 2.35e-01 relative norm
+ ... Working on timestep 188
+2 iterations: 2.00e-01 relative norm
+ ... Working on timestep 189
+2 iterations: 2.13e-01 relative norm
+ ... Working on timestep 190
+2 iterations: 2.52e-01 relative norm
+ ... Working on timestep 191
+2 iterations: 2.55e-01 relative norm
+ ... Working on timestep 192
+2 iterations: 2.17e-01 relative norm
+ ... Working on timestep 193
+2 iterations: 1.94e-01 relative norm
+ ... Working on timestep 194
+2 iterations: 2.30e-01 relative norm
+ ... Working on timestep 195
+2 iterations: 2.62e-01 relative norm
+ ... Working on timestep 196
+2 iterations: 2.45e-01 relative norm
+ ... Working on timestep 197
+2 iterations: 2.01e-01 relative norm
+ ... Working on timestep 198
+2 iterations: 2.01e-01 relative norm
+ ... Working on timestep 199
+2 iterations: 2.47e-01 relative norm
+ ... Working on timestep 200
+2 iterations: 2.65e-01 relative norm
+ ... Working on timestep 201
+2 iterations: 2.38e-01 relative norm
+ ... Working on timestep 202
+2 iterations: 2.06e-01 relative norm
+ ... Working on timestep 203
+2 iterations: 2.23e-01 relative norm
+ ... Working on timestep 204
+2 iterations: 2.53e-01 relative norm
+ ... Working on timestep 205
+2 iterations: 2.47e-01 relative norm
+ ... Working on timestep 206
+2 iterations: 2.10e-01 relative norm
+ ... Working on timestep 207
+2 iterations: 2.00e-01 relative norm
+ ... Working on timestep 208
+2 iterations: 2.36e-01 relative norm
+ ... Working on timestep 209
+2 iterations: 2.59e-01 relative norm
+ ... Working on timestep 210
+2 iterations: 2.37e-01 relative norm
+ ... Working on timestep 211
+2 iterations: 2.00e-01 relative norm
+ ... Working on timestep 212
+2 iterations: 2.09e-01 relative norm
+ ... Working on timestep 213
+2 iterations: 2.50e-01 relative norm
+ ... Working on timestep 214
+2 iterations: 2.61e-01 relative norm
+ ... Working on timestep 215
+2 iterations: 2.31e-01 relative norm
+ ... Working on timestep 216
+2 iterations: 1.98e-01 relative norm
+ ... Working on timestep 217
+2 iterations: 2.16e-01 relative norm
+ ... Working on timestep 218
+2 iterations: 2.53e-01 relative norm
+ ... Working on timestep 219
+2 iterations: 2.59e-01 relative norm
+ ... Working on timestep 220
+2 iterations: 2.33e-01 relative norm
+ ... Working on timestep 221
+2 iterations: 2.14e-01 relative norm
+ ... Working on timestep 222
+2 iterations: 2.31e-01 relative norm
+ ... Working on timestep 223
+2 iterations: 2.51e-01 relative norm
+ ... Working on timestep 224
+2 iterations: 2.41e-01 relative norm
+ ... Working on timestep 225
+2 iterations: 2.13e-01 relative norm
+ ... Working on timestep 226
+2 iterations: 2.08e-01 relative norm
+ ... Working on timestep 227
+2 iterations: 2.35e-01 relative norm
+ ... Working on timestep 228
+2 iterations: 2.53e-01 relative norm
+ ... Working on timestep 229
+2 iterations: 2.39e-01 relative norm
+ ... Working on timestep 230
+2 iterations: 2.13e-01 relative norm
+ ... Working on timestep 231
+2 iterations: 2.17e-01 relative norm
+ ... Working on timestep 232
+2 iterations: 2.47e-01 relative norm
+ ... Working on timestep 233
+2 iterations: 2.60e-01 relative norm
+ ... Working on timestep 234
+2 iterations: 2.40e-01 relative norm
+ ... Working on timestep 235
+2 iterations: 2.10e-01 relative norm
+ ... Working on timestep 236
+2 iterations: 2.14e-01 relative norm
+ ... Working on timestep 237
+2 iterations: 2.46e-01 relative norm
+ ... Working on timestep 238
+2 iterations: 2.63e-01 relative norm
+ ... Working on timestep 239
+2 iterations: 2.50e-01 relative norm
+ ... Working on timestep 240
+2 iterations: 2.27e-01 relative norm
+ ... Working on timestep 241
+2 iterations: 2.25e-01 relative norm
+ ... Working on timestep 242
+2 iterations: 2.43e-01 relative norm
+ ... Working on timestep 243
+2 iterations: 2.49e-01 relative norm
+ ... Working on timestep 244
+2 iterations: 2.33e-01 relative norm
+ ... Working on timestep 245
+2 iterations: 2.17e-01 relative norm
+ ... Working on timestep 246
+2 iterations: 2.27e-01 relative norm
+ ... Working on timestep 247
+2 iterations: 2.50e-01 relative norm
+ ... Working on timestep 248
+2 iterations: 2.54e-01 relative norm
+ ... Working on timestep 249
+2 iterations: 2.38e-01 relative norm
+ ... Working on timestep 250
+2 iterations: 2.25e-01 relative norm
+ ... Working on timestep 251
+2 iterations: 2.36e-01 relative norm
+ ... Working on timestep 252
+2 iterations: 2.55e-01 relative norm
+ ... Working on timestep 253
+2 iterations: 2.54e-01 relative norm
+ ... Working on timestep 254
+2 iterations: 2.32e-01 relative norm
+ ... Working on timestep 255
+2 iterations: 2.17e-01 relative norm
+ ... Working on timestep 256
+2 iterations: 2.37e-01 relative norm
+ ... Working on timestep 257
+2 iterations: 2.67e-01 relative norm
+ ... Working on timestep 258
+2 iterations: 2.74e-01 relative norm
+ ... Working on timestep 259
+2 iterations: 2.53e-01 relative norm
+ ... Working on timestep 260
+2 iterations: 2.26e-01 relative norm
+ ... Working on timestep 261
+2 iterations: 2.25e-01 relative norm
+ ... Working on timestep 262
+2 iterations: 2.43e-01 relative norm
+ ... Working on timestep 263
+2 iterations: 2.53e-01 relative norm
+ ... Working on timestep 264
+2 iterations: 2.43e-01 relative norm
+ ... Working on timestep 265
+2 iterations: 2.31e-01 relative norm
+ ... Working on timestep 266
+2 iterations: 2.37e-01 relative norm
+ ... Working on timestep 267
+2 iterations: 2.54e-01 relative norm
+ ... Working on timestep 268
+2 iterations: 2.60e-01 relative norm
+ ... Working on timestep 269
+2 iterations: 2.47e-01 relative norm
+ ... Working on timestep 270
+2 iterations: 2.30e-01 relative norm
+ ... Working on timestep 271
+2 iterations: 2.30e-01 relative norm
+ ... Working on timestep 272
+2 iterations: 2.44e-01 relative norm
+ ... Working on timestep 273
+2 iterations: 2.50e-01 relative norm
+ ... Working on timestep 274
+2 iterations: 2.43e-01 relative norm
+ ... Working on timestep 275
+2 iterations: 2.37e-01 relative norm
+ ... Working on timestep 276
+2 iterations: 2.50e-01 relative norm
+ ... Working on timestep 277
+2 iterations: 2.69e-01 relative norm
+ ... Working on timestep 278
+2 iterations: 2.73e-01 relative norm
+ ... Working on timestep 279
+2 iterations: 2.51e-01 relative norm
+ ... Working on timestep 280
+2 iterations: 2.19e-01 relative norm
+ ... Working on timestep 281
+2 iterations: 2.10e-01 relative norm
+ ... Working on timestep 282
+2 iterations: 2.33e-01 relative norm
+ ... Working on timestep 283
+2 iterations: 2.57e-01 relative norm
+ ... Working on timestep 284
+2 iterations: 2.59e-01 relative norm
+ ... Working on timestep 285
+2 iterations: 2.44e-01 relative norm
+ ... Working on timestep 286
+2 iterations: 2.32e-01 relative norm
+ ... Working on timestep 287
+2 iterations: 2.39e-01 relative norm
+ ... Working on timestep 288
+2 iterations: 2.51e-01 relative norm
+ ... Working on timestep 289
+2 iterations: 2.48e-01 relative norm
+ ... Working on timestep 290
+2 iterations: 2.31e-01 relative norm
+ ... Working on timestep 291
+2 iterations: 2.19e-01 relative norm
+ ... Working on timestep 292
+2 iterations: 2.29e-01 relative norm
+ ... Working on timestep 293
+2 iterations: 2.50e-01 relative norm
+ ... Working on timestep 294
+2 iterations: 2.59e-01 relative norm
+ ... Working on timestep 295
+2 iterations: 2.53e-01 relative norm
+ ... Working on timestep 296
+2 iterations: 2.46e-01 relative norm
+ ... Working on timestep 297
+2 iterations: 2.50e-01 relative norm
+ ... Working on timestep 298
+2 iterations: 2.57e-01 relative norm
+ ... Working on timestep 299
+2 iterations: 2.50e-01 relative norm
+ ... Working on timestep 300
+2 iterations: 2.27e-01 relative norm
+ ... Working on timestep 301
+2 iterations: 2.09e-01 relative norm
+ ... Working on timestep 302
+2 iterations: 2.23e-01 relative norm
+ ... Working on timestep 303
+2 iterations: 2.56e-01 relative norm
+ ... Working on timestep 304
+2 iterations: 2.73e-01 relative norm
+ ... Working on timestep 305
+2 iterations: 2.61e-01 relative norm
+ ... Working on timestep 306
+2 iterations: 2.29e-01 relative norm
+ ... Working on timestep 307
+2 iterations: 2.10e-01 relative norm
+ ... Working on timestep 308
+2 iterations: 2.22e-01 relative norm
+ ... Working on timestep 309
+2 iterations: 2.44e-01 relative norm
+ ... Working on timestep 310
+2 iterations: 2.50e-01 relative norm
+ ... Working on timestep 311
+2 iterations: 2.39e-01 relative norm
+ ... Working on timestep 312
+2 iterations: 2.28e-01 relative norm
+ ... Working on timestep 313
+2 iterations: 2.36e-01 relative norm
+ ... Working on timestep 314
+2 iterations: 2.51e-01 relative norm
+ ... Working on timestep 315
+2 iterations: 2.55e-01 relative norm
+ ... Working on timestep 316
+2 iterations: 2.43e-01 relative norm
+ ... Working on timestep 317
+2 iterations: 2.29e-01 relative norm
+ ... Working on timestep 318
+2 iterations: 2.30e-01 relative norm
+ ... Working on timestep 319
+2 iterations: 2.43e-01 relative norm
+ ... Working on timestep 320
+2 iterations: 2.49e-01 relative norm
+ ... Working on timestep 321
+2 iterations: 2.40e-01 relative norm
+ ... Working on timestep 322
+2 iterations: 2.31e-01 relative norm
+ ... Working on timestep 323
+2 iterations: 2.40e-01 relative norm
+ ... Working on timestep 324
+2 iterations: 2.61e-01 relative norm
+ ... Working on timestep 325
+2 iterations: 2.70e-01 relative norm
+ ... Working on timestep 326
+2 iterations: 2.52e-01 relative norm
+ ... Working on timestep 327
+2 iterations: 2.16e-01 relative norm
+ ... Working on timestep 328
+2 iterations: 1.96e-01 relative norm
+ ... Working on timestep 329
+2 iterations: 2.23e-01 relative norm
+ ... Working on timestep 330
+2 iterations: 2.65e-01 relative norm
+ ... Working on timestep 331
+2 iterations: 2.85e-01 relative norm
+ ... Working on timestep 332
+2 iterations: 2.73e-01 relative norm
+ ... Working on timestep 333
+2 iterations: 2.40e-01 relative norm
+ ... Working on timestep 334
+2 iterations: 2.15e-01 relative norm
+ ... Working on timestep 335
+2 iterations: 2.20e-01 relative norm
+ ... Working on timestep 336
+2 iterations: 2.39e-01 relative norm
+ ... Working on timestep 337
+2 iterations: 2.45e-01 relative norm
+ ... Working on timestep 338
+2 iterations: 2.36e-01 relative norm
+ ... Working on timestep 339
+2 iterations: 2.24e-01 relative norm
+ ... Working on timestep 340
+2 iterations: 2.30e-01 relative norm
+ ... Working on timestep 341
+2 iterations: 2.46e-01 relative norm
+ ... Working on timestep 342
+2 iterations: 2.55e-01 relative norm
+ ... Working on timestep 343
+2 iterations: 2.48e-01 relative norm
+ ... Working on timestep 344
+2 iterations: 2.31e-01 relative norm
+ ... Working on timestep 345
+2 iterations: 2.24e-01 relative norm
+ ... Working on timestep 346
+2 iterations: 2.31e-01 relative norm
+ ... Working on timestep 347
+2 iterations: 2.40e-01 relative norm
+ ... Working on timestep 348
+2 iterations: 2.39e-01 relative norm
+ ... Working on timestep 349
+2 iterations: 2.33e-01 relative norm
+ ... Working on timestep 350
+2 iterations: 2.40e-01 relative norm
+ ... Working on timestep 351
+2 iterations: 2.65e-01 relative norm
+ ... Working on timestep 352
+2 iterations: 2.89e-01 relative norm
+ ... Working on timestep 353
+2 iterations: 2.90e-01 relative norm
+ ... Working on timestep 354
+2 iterations: 2.62e-01 relative norm
+ ... Working on timestep 355
+2 iterations: 2.18e-01 relative norm
+ ... Working on timestep 356
+2 iterations: 1.97e-01 relative norm
+ ... Working on timestep 357
+2 iterations: 2.25e-01 relative norm
+ ... Working on timestep 358
+2 iterations: 2.67e-01 relative norm
+ ... Working on timestep 359
+2 iterations: 2.86e-01 relative norm
+ ... Working on timestep 360
+2 iterations: 2.73e-01 relative norm
+ ... Working on timestep 361
+2 iterations: 2.41e-01 relative norm
+ ... Working on timestep 362
+2 iterations: 2.18e-01 relative norm
+ ... Working on timestep 363
+2 iterations: 2.25e-01 relative norm
+ ... Working on timestep 364
+2 iterations: 2.44e-01 relative norm
+ ... Working on timestep 365
+2 iterations: 2.51e-01 relative norm
+ ... Working on timestep 366
+2 iterations: 2.39e-01 relative norm
+ ... Working on timestep 367
+2 iterations: 2.21e-01 relative norm
+ ... Working on timestep 368
+2 iterations: 2.20e-01 relative norm
+ ... Working on timestep 369
+2 iterations: 2.40e-01 relative norm
+ ... Working on timestep 370
+2 iterations: 2.59e-01 relative norm
+ ... Working on timestep 371
+2 iterations: 2.64e-01 relative norm
+ ... Working on timestep 372
+2 iterations: 2.53e-01 relative norm
+ ... Working on timestep 373
+2 iterations: 2.39e-01 relative norm
+ ... Working on timestep 374
+2 iterations: 2.35e-01 relative norm
+ ... Working on timestep 375
+2 iterations: 2.40e-01 relative norm
+ ... Working on timestep 376
+2 iterations: 2.43e-01 relative norm
+ ... Working on timestep 377
+2 iterations: 2.40e-01 relative norm
+ ... Working on timestep 378
+2 iterations: 2.42e-01 relative norm
+ ... Working on timestep 379
+2 iterations: 2.58e-01 relative norm
+ ... Working on timestep 380
+2 iterations: 2.81e-01 relative norm
+ ... Working on timestep 381
+2 iterations: 2.92e-01 relative norm
+ ... Working on timestep 382
+2 iterations: 2.79e-01 relative norm
+ ... Working on timestep 383
+2 iterations: 2.42e-01 relative norm
+ ... Working on timestep 384
+2 iterations: 2.04e-01 relative norm
+ ... Working on timestep 385
+2 iterations: 2.04e-01 relative norm
+ ... Working on timestep 386
+2 iterations: 2.44e-01 relative norm
+ ... Working on timestep 387
+2 iterations: 2.83e-01 relative norm
+ ... Working on timestep 388
+2 iterations: 2.95e-01 relative norm
+ ... Working on timestep 389
+2 iterations: 2.77e-01 relative norm
+ ... Working on timestep 390
+2 iterations: 2.44e-01 relative norm
+ ... Working on timestep 391
+2 iterations: 2.25e-01 relative norm
+ ... Working on timestep 392
+2 iterations: 2.38e-01 relative norm
+ ... Working on timestep 393
+2 iterations: 2.63e-01 relative norm
+ ... Working on timestep 394
+2 iterations: 2.70e-01 relative norm
+ ... Working on timestep 395
+2 iterations: 2.52e-01 relative norm
+ ... Working on timestep 396
+2 iterations: 2.20e-01 relative norm
+ ... Working on timestep 397
+2 iterations: 2.04e-01 relative norm
+ ... Working on timestep 398
+2 iterations: 2.25e-01 relative norm
+ ... Working on timestep 399
+2 iterations: 2.58e-01 relative norm
+ ... Working on timestep 400
+2 iterations: 2.75e-01 relative norm
+ ... Working on timestep 401
+2 iterations: 2.67e-01 relative norm
+ ... Working on timestep 402
+2 iterations: 2.41e-01 relative norm
+ ... Working on timestep 403
+2 iterations: 2.16e-01 relative norm
+ ... Working on timestep 404
+2 iterations: 2.13e-01 relative norm
+ ... Working on timestep 405
+2 iterations: 2.27e-01 relative norm
+ ... Working on timestep 406
+2 iterations: 2.39e-01 relative norm
+ ... Working on timestep 407
+2 iterations: 2.44e-01 relative norm
+ ... Working on timestep 408
+2 iterations: 2.49e-01 relative norm
+ ... Working on timestep 409
+2 iterations: 2.63e-01 relative norm
+ ... Working on timestep 410
+2 iterations: 2.82e-01 relative norm
+ ... Working on timestep 411
+2 iterations: 2.92e-01 relative norm
+ ... Working on timestep 412
+2 iterations: 2.82e-01 relative norm
+ ... Working on timestep 413
+2 iterations: 2.53e-01 relative norm
+ ... Working on timestep 414
+2 iterations: 2.23e-01 relative norm
+ ... Working on timestep 415
+2 iterations: 2.22e-01 relative norm
+ ... Working on timestep 416
+2 iterations: 2.53e-01 relative norm
+ ... Working on timestep 417
+2 iterations: 2.85e-01 relative norm
+ ... Working on timestep 418
+2 iterations: 2.93e-01 relative norm
+ ... Working on timestep 419
+2 iterations: 2.72e-01 relative norm
+ ... Working on timestep 420
+2 iterations: 2.32e-01 relative norm
+ ... Working on timestep 421
+2 iterations: 2.05e-01 relative norm
+ ... Working on timestep 422
+2 iterations: 2.23e-01 relative norm
+ ... Working on timestep 423
+2 iterations: 2.66e-01 relative norm
+ ... Working on timestep 424
+2 iterations: 2.95e-01 relative norm
+ ... Working on timestep 425
+2 iterations: 2.92e-01 relative norm
+ ... Working on timestep 426
+2 iterations: 2.61e-01 relative norm
+ ... Working on timestep 427
+2 iterations: 2.19e-01 relative norm
+ ... Working on timestep 428
+2 iterations: 2.05e-01 relative norm
+ ... Working on timestep 429
+2 iterations: 2.35e-01 relative norm
+ ... Working on timestep 430
+2 iterations: 2.74e-01 relative norm
+ ... Working on timestep 431
+2 iterations: 2.92e-01 relative norm
+ ... Working on timestep 432
+2 iterations: 2.81e-01 relative norm
+ ... Working on timestep 433
+2 iterations: 2.48e-01 relative norm
+ ... Working on timestep 434
+2 iterations: 2.13e-01 relative norm
+ ... Working on timestep 435
+2 iterations: 2.04e-01 relative norm
+ ... Working on timestep 436
+2 iterations: 2.25e-01 relative norm
+ ... Working on timestep 437
+2 iterations: 2.49e-01 relative norm
+ ... Working on timestep 438
+2 iterations: 2.62e-01 relative norm
+ ... Working on timestep 439
+2 iterations: 2.66e-01 relative norm
+ ... Working on timestep 440
+2 iterations: 2.69e-01 relative norm
+ ... Working on timestep 441
+2 iterations: 2.80e-01 relative norm
+ ... Working on timestep 442
+2 iterations: 2.92e-01 relative norm
+ ... Working on timestep 443
+2 iterations: 2.95e-01 relative norm
+ ... Working on timestep 444
+2 iterations: 2.81e-01 relative norm
+ ... Working on timestep 445
+2 iterations: 2.52e-01 relative norm
+ ... Working on timestep 446
+2 iterations: 2.26e-01 relative norm
+ ... Working on timestep 447
+2 iterations: 2.30e-01 relative norm
+ ... Working on timestep 448
+2 iterations: 2.65e-01 relative norm
+ ... Working on timestep 449
+2 iterations: 3.03e-01 relative norm
+ ... Working on timestep 450
+2 iterations: 3.23e-01 relative norm
+ ... Working on timestep 451
+2 iterations: 3.15e-01 relative norm
+ ... Working on timestep 452
+2 iterations: 2.84e-01 relative norm
+ ... Working on timestep 453
+2 iterations: 2.46e-01 relative norm
+ ... Working on timestep 454
+2 iterations: 2.32e-01 relative norm
+ ... Working on timestep 455
+2 iterations: 2.57e-01 relative norm
+ ... Working on timestep 456
+2 iterations: 2.97e-01 relative norm
+ ... Working on timestep 457
+2 iterations: 3.22e-01 relative norm
+ ... Working on timestep 458
+2 iterations: 3.19e-01 relative norm
+ ... Working on timestep 459
+2 iterations: 2.87e-01 relative norm
+ ... Working on timestep 460
+2 iterations: 2.36e-01 relative norm
+ ... Working on timestep 461
+2 iterations: 1.98e-01 relative norm
+ ... Working on timestep 462
+2 iterations: 2.08e-01 relative norm
+ ... Working on timestep 463
+2 iterations: 2.56e-01 relative norm
+ ... Working on timestep 464
+2 iterations: 3.01e-01 relative norm
+ ... Working on timestep 465
+2 iterations: 3.20e-01 relative norm
+ ... Working on timestep 466
+2 iterations: 3.08e-01 relative norm
+ ... Working on timestep 467
+2 iterations: 2.72e-01 relative norm
+ ... Working on timestep 468
+2 iterations: 2.25e-01 relative norm
+ ... Working on timestep 469
+2 iterations: 1.95e-01 relative norm
+ ... Working on timestep 470
+2 iterations: 2.06e-01 relative norm
+ ... Working on timestep 471
+2 iterations: 2.44e-01 relative norm
+ ... Working on timestep 472
+2 iterations: 2.80e-01 relative norm
+ ... Working on timestep 473
+2 iterations: 3.01e-01 relative norm
+ ... Working on timestep 474
+2 iterations: 3.06e-01 relative norm
+ ... Working on timestep 475
+2 iterations: 3.02e-01 relative norm
+ ... Working on timestep 476
+2 iterations: 2.95e-01 relative norm
+ ... Working on timestep 477
+2 iterations: 2.90e-01 relative norm
+ ... Working on timestep 478
+2 iterations: 2.86e-01 relative norm
+ ... Working on timestep 479
+2 iterations: 2.80e-01 relative norm
+ ... Working on timestep 480
+2 iterations: 2.73e-01 relative norm
+ ... Working on timestep 481
+2 iterations: 2.72e-01 relative norm
+ ... Working on timestep 482
+2 iterations: 2.84e-01 relative norm
+ ... Working on timestep 483
+2 iterations: 3.11e-01 relative norm
+ ... Working on timestep 484
+2 iterations: 3.45e-01 relative norm
+ ... Working on timestep 485
+2 iterations: 3.71e-01 relative norm
+ ... Working on timestep 486
+2 iterations: 3.80e-01 relative norm
+ ... Working on timestep 487
+2 iterations: 3.69e-01 relative norm
+ ... Working on timestep 488
+2 iterations: 3.37e-01 relative norm
+ ... Working on timestep 489
+2 iterations: 2.94e-01 relative norm
+ ... Working on timestep 490
+2 iterations: 2.63e-01 relative norm
+ ... Working on timestep 491
+2 iterations: 2.68e-01 relative norm
+ ... Working on timestep 492
+2 iterations: 3.09e-01 relative norm
+ ... Working on timestep 493
+2 iterations: 3.58e-01 relative norm
+ ... Working on timestep 494
+2 iterations: 3.93e-01 relative norm
+ ... Working on timestep 495
+2 iterations: 4.06e-01 relative norm
+ ... Working on timestep 496
+2 iterations: 3.97e-01 relative norm
+ ... Working on timestep 497
+2 iterations: 3.71e-01 relative norm
+ ... Working on timestep 498
+2 iterations: 3.42e-01 relative norm
+ ... Working on timestep 499
+2 iterations: 3.33e-01 relative norm
+Elapsed ROM time: 1.508e+03 seconds
+Relative error: 13.80%
+Snapshot saved as pod_rbf_prom_snaps_mu1_4.75_mu2_0.020.npy

@@ -973,7 +973,7 @@ def inviscid_burgers_pod_rbf_2D_global(grid_x, grid_y, w0, dt, num_steps, mu, ba
     return snaps, (num_its, jac_time, res_time, ls_time)
 
 def inviscid_burgers_pod_rbf_2D_global_ecsw(grid_x, grid_y, w0, dt, num_steps, mu, basis, basis2,
-                                            W_global, q_p_train, q_s_train, weights, epsilon, scaler, kernel_type='gaussian'):
+                                            W_global, q_p_train, q_s_train, weights, epsilon, scaler, q_snaps, kernel_type='gaussian'):
     """
     Use a first-order Godunov spatial discretization and a second-order trapezoid rule
     time integrator to solve an LSPG manifold PROM for a parameterized inviscid 2D Burgers'
@@ -1097,6 +1097,10 @@ def inviscid_burgers_pod_rbf_2D_global_ecsw(grid_x, grid_y, w0, dt, num_steps, m
         jac_time += jac_timep
         res_time += res_timep
         ls_time += ls_timep
+
+        if i % 258492480 == 0 or i < 0:
+            print(f"This step was given: {i}")
+            y = q_snaps[:,i+1]
 
         # Reconstruct the full state
         w_reconstructed = decode_rbf_global(y, W_global, q_p_train, V, Vbar, epsilon, scaler, kernel_type, echo_level=0)
@@ -1356,7 +1360,7 @@ def decode_rbf_global(x, W_global, q_p_train, basis, basis2, epsilon, scaler, ke
     - basis, basis2: POD matrices for reconstruction.
     - epsilon: RBF shape parameter.
     - scaler: Normalization scaler.
-    - kernel_type: RBF type ('gaussian', 'imq', 'linear', 'multiquadric').
+    - kernel_type: RBF type ('gaussian', 'imq', 'linear', 'multiquadric', 'matern').
     - echo_level: Verbosity level.
 
     Returns:
@@ -1364,20 +1368,34 @@ def decode_rbf_global(x, W_global, q_p_train, basis, basis2, epsilon, scaler, ke
     """
     # Perform global RBF interpolation
     if kernel_type == 'gaussian':
-        q_s_pred = RBFUtils.interpolate_with_rbf_global_gaussian(x, q_p_train, W_global, epsilon, scaler, echo_level)
+        q_s_pred = RBFUtils.interpolate_with_rbf_global_gaussian(
+            x, q_p_train, W_global, epsilon, scaler, echo_level
+        )
     elif kernel_type == 'imq':
-        q_s_pred = RBFUtils.interpolate_with_rbf_global_imq(x, q_p_train, W_global, epsilon, scaler, echo_level)
+        q_s_pred = RBFUtils.interpolate_with_rbf_global_imq(
+            x, q_p_train, W_global, epsilon, scaler, echo_level
+        )
     elif kernel_type == 'linear':
-        q_s_pred = RBFUtils.interpolate_with_rbf_global_linear(x, q_p_train, W_global, scaler, echo_level)
+        q_s_pred = RBFUtils.interpolate_with_rbf_global_linear(
+            x, q_p_train, W_global, scaler, echo_level
+        )
     elif kernel_type == 'multiquadric':
-        q_s_pred = RBFUtils.interpolate_with_rbf_global_multiquadric(x, q_p_train, W_global, epsilon, scaler, echo_level)
+        q_s_pred = RBFUtils.interpolate_with_rbf_global_multiquadric(
+            x, q_p_train, W_global, epsilon, scaler, echo_level
+        )
+    elif kernel_type == 'matern':
+        q_s_pred = RBFUtils.interpolate_with_rbf_global_matern32(
+            x, q_p_train, W_global, epsilon, scaler, echo_level
+        )
     else:
         raise ValueError(f"Unsupported kernel type: {kernel_type}")
 
     # Reconstruct the full state vector
     return basis @ x + basis2 @ q_s_pred
 
-def jac_rbf_global(x, W_global, q_p_train, q_s_train, basis, basis2, epsilon, scaler, kernel_type='gaussian', echo_level = 0):
+
+def jac_rbf_global(x, W_global, q_p_train, q_s_train, basis, basis2, epsilon, scaler,
+                   kernel_type='gaussian', echo_level=0):
     """
     Compute the full Jacobian V = U_p + U_s * J_RBF (global).
 
@@ -1390,7 +1408,7 @@ def jac_rbf_global(x, W_global, q_p_train, q_s_train, basis, basis2, epsilon, sc
     - basis2: U_s matrix from POD.
     - epsilon: Shape parameter for RBF.
     - scaler: Scaler for normalization (e.g., StandardScaler or MinMaxScaler).
-    - kernel_type: Type of RBF kernel to use ('gaussian', 'imq', 'linear', 'multiquadric').
+    - kernel_type: Type of RBF kernel to use ('gaussian', 'imq', 'linear', 'multiquadric', 'matern').
 
     Returns:
     - Full Jacobian V with respect to reduced coordinates.
@@ -1401,13 +1419,25 @@ def jac_rbf_global(x, W_global, q_p_train, q_s_train, basis, basis2, epsilon, sc
 
     # Compute RBF Jacobian globally
     if kernel_type == 'gaussian':
-        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_gaussian(x_normalized, q_p_train, W_global, epsilon, scaler, echo_level=echo_level)
+        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_gaussian(
+            x_normalized, q_p_train, W_global, epsilon, scaler, echo_level=echo_level
+        )
     elif kernel_type == 'imq':
-        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_imq(x_normalized, q_p_train, W_global, epsilon, scaler, echo_level=echo_level)
+        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_imq(
+            x_normalized, q_p_train, W_global, epsilon, scaler, echo_level=echo_level
+        )
     elif kernel_type == 'linear':
-        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_linear(x_normalized, q_p_train, W_global, epsilon, scaler, echo_level=echo_level)
+        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_linear(
+            x_normalized, q_p_train, W_global, epsilon, scaler, echo_level=echo_level
+        )
     elif kernel_type == 'multiquadric':
-        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_multiquadric(x_normalized, q_p_train, W_global, epsilon, scaler, echo_level=echo_level)
+        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_multiquadric(
+            x_normalized, q_p_train, W_global, epsilon, scaler, echo_level=echo_level
+        )
+    elif kernel_type == 'matern':
+        rbf_jacobian = RBFUtils.compute_rbf_jacobian_global_matern32(
+            x_normalized, q_p_train, W_global, epsilon, scaler, echo_level=echo_level
+        )
     else:
         raise ValueError(f"Unsupported kernel type: {kernel_type}")
 
@@ -1591,7 +1621,7 @@ def jac_gp_central_difference(
 
     return full_jac
 
-def jac_gp(
+def jac_gp_forward_difference(
     x, gp_model, basis, basis2, scaler,
     fd_eps=1e-6, echo_level=0,
     use_custom_predict=True
@@ -1687,174 +1717,96 @@ def jac_gp(
 
     return full_jac
 
-def jac_gp_analytical_in_progress(
-    x, gp_model, basis, basis2, scaler, echo_level=0
+def matern15_grad(x_scaled, X_train, length_scale, cval):
+    """
+    Vectorized computation of the Matern(ν=1.5) kernel and its gradient.
+    
+    Parameters:
+    -----------
+    x_scaled : ndarray of shape (d,)
+        Scaled input vector.
+    X_train : ndarray of shape (n_train, d)
+        Scaled training inputs.
+    length_scale : float
+        Length scale parameter of the kernel.
+    cval : float
+        Constant kernel coefficient.
+
+    Returns:
+    --------
+    grad_k : ndarray of shape (n_train, d)
+        Gradients of the kernel w.r.t. x_scaled.
+    """
+    sqrt3 = np.sqrt(3.0)
+    diff = x_scaled[None, :] - X_train  # shape: (n_train, d)
+    dists = np.linalg.norm(diff, axis=1)  # shape: (n_train,)
+    ratio = dists / length_scale         # shape: (n_train,)
+    exp_term = np.exp(-sqrt3 * ratio)    # shape: (n_train,)
+
+    # Gradient values
+    grad_k = np.zeros_like(diff)
+    mask = dists > 1e-14
+    factor = -3.0 * cval / (length_scale ** 2)
+    grad_k[mask] = factor * exp_term[mask, None] * diff[mask]
+
+    return grad_k  
+
+def jac_gp(
+    x, gp_model, basis, basis2, scaler,
+    echo_level=0
 ):
     """
-    Compute the Jacobian d(w)/d(x) for a POD-GP model with Matern(nu=1.5) kernel, 
-    using an analytical approach (no finite differences).
+    Compute the analytical Jacobian for a GP model using the Matern(ν=1.5) kernel.
 
-    Parameters
-    ----------
+    Parameters:
+    -----------
     x : ndarray of shape (r_p,)
-        The original (unscaled) primary POD coordinates.
-    gp_model : GaussianProcessRegressor
-        Fitted GP model with Matern(nu=1.5). We assume no sum of kernels.
+        Input reduced coordinates.
+    gp_model : Trained GaussianProcessRegressor
     basis : ndarray of shape (n_dofs, r_p)
-        Primary POD basis, U_p.
     basis2 : ndarray of shape (n_dofs, r_s)
-        Secondary POD basis, U_s.
-    scaler : MinMaxScaler (or similar)
-        Used to transform x -> x_scaled. Must match training scaling.
+    scaler : fitted scaler (e.g., MinMaxScaler or StandardScaler)
     echo_level : int
         Verbosity level.
 
-    Returns
-    -------
+    Returns:
+    --------
     full_jac : ndarray of shape (n_dofs, r_p)
-        The Jacobian of the decoded full state w.r.t. the original (unscaled) x.
-        i.e. d(w)/dx = U_p + U_s @ d(q_s)/dx.
+        Jacobian of the decoded full state.
     """
+
     import time
     t0 = time.time()
 
-    # --- 1) Reshape & scale x
-    x_in = x.reshape(1, -1)                # (1, r_p)
-    x_scaled = scaler.transform(x_in)      # (1, r_p)
-    scale_factors = scaler.scale_          # shape (r_p,)
+    # Reshape and scale
+    x_scaled = scaler.transform(x.reshape(1, -1)).ravel()
+    scale_factors = scaler.scale_
 
-    # --- 2) Parse kernel hyperparams
-    # We assume the kernel is Matern(...) or ConstantKernel * Matern(...)
-    kernel_ = gp_model.kernel_
+    # Get GP internals
+    X_train = gp_model.X_train_
+    alpha = gp_model.alpha_
+    kernel = gp_model.kernel_
+    cval = kernel.k1.constant_value
+    length_scale = kernel.k2.length_scale
 
-    # E.g. if it's "ConstantKernel(...) * Matern(length_scale=..., nu=1.5)"
-    # you might need to do kernel_.k2 for Matern or parse kernel_.get_params().
-    # For simplicity, let's suppose you do:
-    print(kernel_.get_params())
-    length_scale = kernel_.get_params()['length_scale']   # float
-    nu           = kernel_.get_params()['nu']            # should be 1.5
-    variance     = 1.0  # default amplitude
-    # If you have a ConstantKernel, might do something like:
-    # amplitude = kernel_.k1.constant_value
-    # or parse the product.
+    # Evaluate kernel and gradients
+    grad_k = matern15_grad(x_scaled, X_train, length_scale, cval)
 
-    # For Matern(nu=1.5), the kernel can be:
-    # k(r) = amplitude * (1 + sqrt(3)*r/ell)*exp(-sqrt(3)*r/ell)
-    # We parse amplitude either from kernel_ or from alpha_ if needed.
+    # Weighted sum over training points
+    dq_s_dx_scaled = alpha.T @ grad_k  # shape: (r_s, r_p)
 
-    # --- 3) Build the kernel vector & gradient wrt scaled x
-    #  # train data
-    X_train_ = gp_model.X_train_  # shape (N, r_p)
-    alpha_   = gp_model.alpha_    # shape (N, r_s)
-    # Possibly skip adding WhiteKernel noise since it's handled in alpha_.
+    # Rescale to unscaled x
+    dq_s_dx_real = dq_s_dx_scaled * scale_factors  # broadcast (r_p,) across cols
 
-    # We'll define a helper to compute the derivative d(k(r))/d(x) for each row
 
-    def matern15_k_and_grad(x_sc, X_train, length_scale):
-        """
-        Returns:
-         k_vec  : shape (N,) the Matern(1.5) kernel values
-         dk_dX  : shape (N, r_p), the derivative w.r.t. scaled x
-        x_sc is shape (1, r_p)
-        """
-        # un-batch x_sc => (r_p,)
-        x_sc = x_sc.flatten()
-        N = X_train.shape[0]
-        r_p = x_sc.size
-
-        k_vec = np.zeros(N)
-        dk_dX = np.zeros((N, r_p))
-
-        # In scaled domain, we interpret distance as Euclidean in scaled space
-        # But if the kernel was fitted on scaled coords, length_scale is
-        # the param. We'll do: r_i = ||(x_sc - X_train[i])|| in scaled space
-
-        for i in range(N):
-            diff = x_sc - X_train[i]   # shape (r_p,)
-            r = np.linalg.norm(diff)   # float
-
-            if r < 1e-14:
-                # If x == X_train[i], derivative is 0 or we handle limit
-                k_vec[i] = 1.0  # for r=0 => (1 + 0)*exp(0) = 1 * amplitude
-                # derivative is 0 => no direction change if r=0
-                dk_dX[i,:] = 0.0
-            else:
-                # Matern(1.5) => k(r) = (1 + sqrt(3)*r/ell)*exp(-sqrt(3)*r/ell)
-                sqrt3 = np.sqrt(3.0)
-                z = r / length_scale
-                # k(r):
-                kr = (1.0 + sqrt3*z) * np.exp(-sqrt3*z)  # ignoring amplitude for now
-
-                # derivative wrt r:
-                # d/d(r)[ (1 + sqrt3*z)*exp(-sqrt3*z ) ] * d(z)/d(r)
-                # = ...
-                # simpler version:
-                #  d/d(r)  => derivative = ...
-                # let's do direct approach:
-                #   let A(r) = 1 + sqrt3*r/ell
-                #   let B(r) = exp(-sqrt3*r/ell)
-                #   => k(r) = A*B
-                # d(k)/dr = A'(r)*B(r) + A(r)*B'(r)
-                #   A'(r) = sqrt3/ell
-                #   B'(r) = -sqrt3/ell * exp(-sqrt3*r/ell)
-                # => derivative wrt r:
-                #   dK/dr = sqrt3/ell * B  + A * [ -sqrt3/ell B ]
-                #         = (sqrt3/ell)*B - (sqrt3/ell)*A*B
-                #         = (sqrt3/ell)*B[1 - A]
-                A = 1.0 + sqrt3*z
-                B = np.exp(-sqrt3*z)
-                dKdr = (sqrt3/length_scale)*B*(1.0 - A)
-
-                k_vec[i] = kr  # ignoring amplitude => we can multiply amplitude later
-
-                # chain rule wrt x_j: dK/dx_j = dK/dr * dr/dx_j
-                # dr/dx_j = diff[j]/r
-                grad_i = dKdr * (diff / r)
-                dk_dX[i,:] = grad_i
-
-        return k_vec, dk_dX
-
-    # Compute kernel & grad in scaled space
-    k_vec, dk_dX = matern15_k_and_grad(x_scaled, X_train_, length_scale)
-
-    # If you have an amplitude => multiply k_vec, dk_dX by amplitude
-    # e.g. amplitude = ...
-    # k_vec *= amplitude
-    # dk_dX *= amplitude
-
-    # --- 4) Predicted q_s & its derivative wrt scaled x
-    # q_s(x) = k_vec^T alpha_
-    # => shape (r_s,)
-    # derivative: d(q_s)/d(x_sc) = dk_dX^T alpha_
-    # => shape (r_s, r_p)
-    q_s = k_vec @ alpha_  # shape (r_s,)
-    dq_s_d_xscaled = dk_dX.T @ alpha_  # (r_p, N) * (N, r_s) => (r_p, r_s)
-    # but typically we want shape (r_s, r_p):
-    dq_s_d_xscaled = dq_s_d_xscaled.T  # => (r_s, r_p)
-
-    # --- 5) If your original x is unscaled, then d(q_s)/d x = d(q_s)/d x_scaled * d(x_scaled)/d x
-    # chain rule:
-    # x_scaled_j = scale_factors[j]*(x_j - min_j), ignoring offset for derivative
-    # => d(x_scaled_j)/d x_j = scale_factors[j]
-    # So we multiply each column j by scale_factors[j]
-    for j in range(dq_s_d_xscaled.shape[1]):
-        dq_s_d_xscaled[:, j] *= scale_factors[j]
-
-    # --- 6) Combine with POD bases
-    # w(x) = U_p x + U_s q_s(x)
-    # => derivative wrt x => d(w)/dx = U_p + U_s * d(q_s)/dx
-    # shape: U_p is (n_dofs, r_p), U_s is (n_dofs, r_s)
-    # dq_s_d_x is (r_s, r_p)
-    # => final is (n_dofs, r_p)
-    # Then add them
-    U_p_part = basis                     # shape (n_dofs, r_p)
-    U_s_part = basis2 @ dq_s_d_xscaled   # shape (n_dofs, r_p)
-    full_jac = U_p_part + U_s_part
+    # Final Jacobian
+    full_jac = basis + basis2 @ dq_s_dx_real
 
     if echo_level > 0:
-        print(f"[jac_gp_analytical_matern15] total time: {time.time() - t0:.6f} s")
+        print(f"[jac_gp_matern15] Total analytical Jacobian time: {time.time() - t0:.6f} s")
 
     return full_jac
+
 
 def newton_raphson(func, jac, x0, max_its=20, relnorm_cutoff=1e-12):
     """
@@ -3005,13 +2957,8 @@ def compute_ECSW_training_matrix_2D_rbf_global(snaps, prev_snaps, basis, basis2,
 
     return C
 
-def compute_ECSW_training_matrix_2D_gp(snaps, prev_snaps, basis, basis2,
-                                       gp_model,
-                                       res, jac,
-                                       grid_x, grid_y, dt, mu,
-                                       scaler,
-                                       max_local_its=10,
-                                       local_tol=1e-2):
+def compute_ECSW_training_matrix_2D_gp(snaps, prev_snaps, basis, basis2, gp_model, res, jac, 
+                                       grid_x, grid_y, dt, mu, scaler, max_local_its=10, local_tol=1e-2):
     """
     Assembles the ECSW hyper-reduction training matrix for the POD-GP model.
     Running a non-negative least squares algorithm with an early stopping

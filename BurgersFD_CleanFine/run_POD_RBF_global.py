@@ -86,7 +86,7 @@ def main(mu1=5.19, mu2=0.026, save_npy=False, save_plot=False):
 
     # Optional: Plot and save the results
     if save_plot:
-        inds_to_plot = range(0, NUM_STEPS + 1, 100)
+        inds_to_plot = range(0, NUM_STEPS + 1, 25)
         snaps_to_plot = [hdm_snaps, pod_rbf_prom_snaps]
         labels = ['HDM', 'POD-RBF PROM (Global)']
         colors = ['black', 'green']
@@ -105,4 +105,4 @@ def main(mu1=5.19, mu2=0.026, save_npy=False, save_plot=False):
 
 
 if __name__ == "__main__":
-    main(save_npy=False, save_plot=True)
+    main(save_npy=True, save_plot=True)

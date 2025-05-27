@@ -32,8 +32,8 @@ def create_combined_gif(
     interval=300
 ):
     """
-    Create a combined animation GIF with 2 columns and 2 rows, comparing HDM with each ROM.
-    
+    Create a combined animation GIF with 2 rows and 3 columns, comparing HDM with each ROM.
+
     Parameters:
         npy_files (list): List of file paths to the `.npy` snapshot files.
         hdm_file (str): Path to the `.npy` file for the HDM.
@@ -52,29 +52,24 @@ def create_combined_gif(
     # Load the snapshots from the `.npy` files
     snaps_list = [np.load(npy_file) for npy_file in npy_files]
 
-    # Create the figure and subplots (2 rows, 2 columns)
-    fig, axes = plt.subplots(2, 2, figsize=(14, 8))
-    fig.subplots_adjust(left=0.05, right=0.95, top=0.85, bottom=0.15, wspace=0.3, hspace=0.3)
+    # Create the figure and subplots (2 rows, 3 columns for three datasets)
+    fig, axes = plt.subplots(2, 3, figsize=(21, 8))  # Adjust the figure size for three columns
+    fig.subplots_adjust(left=0.03, right=0.97, top=0.85, bottom=0.13, wspace=0.3, hspace=0.3)
 
     # Add a subtitle for `mu1` and `mu2`
-    fig.suptitle(f"Parameter Values: $\\mu_1 = {mu1:.2f}$, $\\mu_2 = {mu2:.3f}$", fontsize=14, y=0.92)
+    fig.suptitle(f"Parameter Values: $\\mu_1 = {mu1:.2f}$, $\\mu_2 = {mu2:.3f}$", fontsize=14, y=0.94)
 
     # Set the titles for the top row immediately
     for col, label in enumerate(labels):
         axes[0, col].set_title(f"HDM vs {label}")
 
-    # (Optional) Fix y-axis limits for consistent comparison, if desired
-    # For example, set them to the same across all frames:
-    y_min, y_max = 0, 6.5
-
     # Prepare dummy lines for the legend so it appears from the start
-    # You can import matplotlib.lines as mlines if desired; here we just plot empty lines
-    hdm_line = plt.Line2D([], [], color="black", linewidth=2, label="HDM")
-    rom_lines = [
+    legend_handles = [
+        plt.Line2D([], [], color="black", linewidth=2, label="HDM")
+    ] + [
         plt.Line2D([], [], color=c, linewidth=lw, label=lbl)
         for c, lw, lbl in zip(colors, linewidths, labels)
     ]
-    legend_handles = [hdm_line] + rom_lines
 
     # Add a single legend at the bottom of the figure
     fig.legend(
@@ -83,7 +78,7 @@ def create_combined_gif(
         ncol=len(legend_handles),
         fontsize=12,
         frameon=False,
-        bbox_to_anchor=(0.5, 0.02)
+        bbox_to_anchor=(0.5, 0.03)
     )
 
     def animate_func(frame_idx):
@@ -93,14 +88,20 @@ def create_combined_gif(
 
         # Clear each subplot for the current frame
         for row in range(2):
-            for col in range(2):
+            for col in range(3):
                 axes[row, col].clear()
 
-        # We reset the titles again, because clearing also erases them
+        # Reset the titles again, because clearing also erases them
         for col, label in enumerate(labels):
             axes[0, col].set_title(f"HDM vs {label}")
 
-        # For each column in [0, 1], plot HDM vs the corresponding ROM
+        # Set consistent y-axis limits for all subplots
+        y_min, y_max = 0, 6.5  # Adjust these values as needed
+        for row in range(2):
+            for col in range(3):
+                axes[row, col].set_ylim(y_min, y_max)
+
+        # For each column, plot HDM vs the corresponding ROM
         for col, (snaps, label, color, lw) in enumerate(zip(snaps_list, labels, colors, linewidths)):
             # Plot the HDM snapshot
             plot_snaps(
@@ -123,10 +124,6 @@ def create_combined_gif(
                 linewidth=lw
             )
 
-            # Set consistent y-axis limits if needed
-            axes[0, col].set_ylim(y_min, y_max)
-            axes[1, col].set_ylim(y_min, y_max)
-
         return []
 
     # Create the animation
@@ -146,25 +143,25 @@ def create_combined_gif(
 
 
 if __name__ == "__main__":
-    # Example usage:
     # File paths for the `.npy` snapshot files
-    hdm_file = "mu1_4.75+mu2_0.02.npy"  # HDM file
+    hdm_file = "mu1_4.25+mu2_0.0225.npy"  # HDM file
     npy_files = [
-        "pod_rbf_hprom_global_snaps_mu1_4.75_mu2_0.020.npy",
-        "pod_ann_hprom_snaps_mu1_4.75_mu2_0.020.npy"
+        "pod_ann_hprom_snaps_mu1_4.25_mu2_0.022.npy",
+        "pod_rbf_hprom_global_snaps_mu1_4.25_mu2_0.022.npy",
+        "pod_gp_hprom_snaps_mu1_4.25_mu2_0.022.npy"  # Added third file
     ]
 
     # Dynamically name the output GIF based on the HDM file
-    output_gif = hdm_file.replace(".npy", "_global_vs_ann_comparison_with_params.gif")
+    output_gif = hdm_file.replace(".npy", "_overlay_with_params.gif")
 
     # Labels, colors, and line widths for each simulation
-    labels = ["POD-RBF HPROM Global", "POD-ANN HPROM"]
-    colors = ["green", "red"]
-    linewidths = [2, 2]
+    labels = ["POD-ANN HPROM", "POD-RBF HPROM", "POD-GP HPROM"]  # Updated labels
+    colors = ["red", "blue", "green"]  # Updated colors
+    linewidths = [2, 2, 2]  # Updated linewidths
 
     # Parameter values to display
-    mu1 = 4.75
-    mu2 = 0.02
+    mu1 = 4.25
+    mu2 = 0.0225
 
     # Number of timesteps (assume all `.npy` files have the same number of timesteps)
     sample_snaps = np.load(npy_files[0])

@@ -8,9 +8,9 @@ from scipy.optimize import nnls
 from joblib import Parallel, delayed
 
 from hypernet2D import (load_or_compute_snaps, make_2D_grid,
-                        plot_snaps, inviscid_burgers_pod_rbf_2D_ecsw,
+                        plot_snaps, inviscid_burgers_pod_rbf_2D_nearest_neighbors_ecsw,
                         inviscid_burgers_res2D, inviscid_burgers_exact_jac2D,
-                        compute_ECSW_training_matrix_2D_rbf, decode_rbf)
+                        compute_ECSW_training_matrix_2D_rbf_nearest_neighbors, decode_rbf_nearest_neighbors)
 from config import MU1_RANGE, MU2_RANGE, SAMPLES_PER_MU
 
 plt.rcParams.update({
@@ -68,7 +68,7 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
     U_s = np.load('modes/U_s.npy')
 
     # Set epsilon and neighbors based on the value of mu1 (adjust as needed)
-    if mu1 == 4.75:
+    if mu1 == 4.75 or 4.875:
         epsilon = 0.5
         neighbors = 5
     elif mu1 == 4.56:
@@ -151,7 +151,7 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
 
     # Time-stepping to compute the POD-RBF PROM at the out-of-sample parameter point
     t0 = time.time()
-    pod_rbf_prom_q_p_snaps, man_times = inviscid_burgers_pod_rbf_2D_ecsw(grid_x, grid_y, w0, dt, num_steps, mu_rom, U_p, U_s,
+    pod_rbf_prom_q_p_snaps, man_times = inviscid_burgers_pod_rbf_2D_nearest_neighbors_ecsw(grid_x, grid_y, w0, dt, num_steps, mu_rom, U_p, U_s,
                                      epsilon, neighbors, kdtree, q_p_train, q_s_train, weights, scaler, kernel_type='gaussian')
     man_its, man_jac, man_res, man_ls = man_times
     elapsed_time = time.time() - t0
@@ -165,7 +165,7 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
     for i in range(num_time_steps):
         # Decode each primary coordinate vector to full state
         q_p_snapshot = pod_rbf_prom_q_p_snaps[:, i]
-        pod_rbf_hprom_snaps[:, i] = decode_rbf(q_p_snapshot, epsilon, neighbors, kdtree, q_p_train, q_s_train, U_p, U_s, scaler, kernel_type="gaussian")
+        pod_rbf_hprom_snaps[:, i] = decode_rbf_nearest_neighbors(q_p_snapshot, epsilon, neighbors, kdtree, q_p_train, q_s_train, U_p, U_s, scaler, kernel_type="gaussian")
 
     # Calculate relative error
     relative_error = 100 * np.linalg.norm(hdm_snaps - pod_rbf_hprom_snaps) / np.linalg.norm(hdm_snaps)
@@ -176,9 +176,8 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
     print(f'Snapshot saved as pod_rbf_hprom_snaps_mu1_{mu_rom[0]:.2f}_mu2_{mu_rom[1]:.3f}.npy')
 
     # Optionally plot and compare snapshots
-    '''
     inds_to_plot = range(0, num_steps + 1, 100)
-    snaps_to_plot = [hdm_snaps, pod_rbf_prom_snaps]
+    snaps_to_plot = [hdm_snaps, pod_rbf_hprom_snaps]
     labels = ['HDM', 'POD-RBF']
     colors = ['black', 'green']
     linewidths = [2, 1]
@@ -190,7 +189,6 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
     print(f'Saving as "{save_path}"')
     plt.savefig(save_path, dpi=300)
     plt.show()
-    '''
 
     # Print timings for the steps
     print(f'num_its: {man_its:.2f}, jac_time: {man_jac:.2f}, res_time: {man_res:.2f}, ls_time: {man_ls:.2f}')
@@ -199,4 +197,4 @@ def main(mu1=4.75, mu2=0.02, compute_ecsw=False):
     return elapsed_time, relative_error
 
 if __name__ == "__main__":
-    main(mu1=4.75, mu2= 0.02, compute_ecsw=False)
+    main(mu1=4.875, mu2= 0.015, compute_ecsw=False)

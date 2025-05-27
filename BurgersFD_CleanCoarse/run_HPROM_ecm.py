@@ -24,7 +24,7 @@ plt.rcParams.update({
     "font.family": ["STIXGeneral"]})
 plt.rc('font', size=13)
 
-def main(mu1= 4.74, mu2=0.02, compute_ecsw = True):
+def main(mu1= 4.75, mu2=0.02, compute_ecsw = False):
 
     snap_folder = 'param_snaps'
     num_vecs = 95
@@ -81,7 +81,7 @@ def main(mu1= 4.74, mu2=0.02, compute_ecsw = True):
         t1 = time.time()
         C = np.ascontiguousarray(C, dtype=np.float64)
         b = np.ascontiguousarray(C.sum(axis=1), dtype=np.float64)
-        u,_,_,_= RandomizedSingularValueDecomposition().Calculate(C.T, 1e-6)
+        u,_,_,_= RandomizedSingularValueDecomposition().Calculate(C.T, 1e-8)
         hyper_reduction_element_selector = EmpiricalCubatureMethod()
         hyper_reduction_element_selector.SetUp(u, InitialCandidatesSet = None, constrain_sum_of_weights=True, constrain_conditions = False)
         hyper_reduction_element_selector.Run()
@@ -102,7 +102,8 @@ def main(mu1= 4.74, mu2=0.02, compute_ecsw = True):
         # weights = np.concatenate((np.ones((num_cells_y, nn)), weights), axis=1)
         weights = full_weights.ravel()
         np.save('ecsw_weights_lspg', weights)
-        plt.rcParams.update({
+        '''
+	plt.rcParams.update({
           "text.usetex": True,
           "mathtext.fontset": "stix",
           "font.family": ["STIXGeneral"]})
@@ -112,7 +113,8 @@ def main(mu1= 4.74, mu2=0.02, compute_ecsw = True):
         plt.ylabel('$y$ cell index')
         plt.title('PROM Reduced Mesh')
         plt.tight_layout()
-        plt.savefig('prom-reduced-mesh.png', dpi=300)   
+        plt.savefig('prom-reduced-mesh.png', dpi=300) 
+        '''  
     else:
         weights = np.load('ecsw_weights_lspg.npy')
     print('N_e = {}'.format(np.sum(weights > 0)))

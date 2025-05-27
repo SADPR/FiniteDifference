@@ -190,7 +190,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
         pod_rbf_hprom_snaps[:, i] = decode_rbf(q_p_snapshot, epsilon, neighbors, kdtree, q_p_train, q_s_train, U_p, U_s, scaler, kernel_type="gaussian")
 
     # Calculate relative error
-    relative_error = 100 * np.linalg.norm(hdm_snaps[:,:450] - pod_rbf_hprom_snaps[:,:450]) / np.linalg.norm(hdm_snaps[:,:450])
+    relative_error = 100 * np.linalg.norm(hdm_snaps - pod_rbf_hprom_snaps) / np.linalg.norm(hdm_snaps)
     print(f'Relative error: {relative_error:.2f}%')
 
     # Save the snapshot to a file
@@ -199,7 +199,7 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
 
     # Optionally plot and compare snapshots
     
-    inds_to_plot = range(0, num_steps - 100 + 1, 100)
+    inds_to_plot = range(0, num_steps + 1, 100)
     snaps_to_plot = [hdm_snaps, pod_rbf_hprom_snaps]
     labels = ['HDM', 'POD-RBF']
     colors = ['black', 'green']
@@ -221,4 +221,4 @@ def main(mu1=5.19, mu2=0.026, compute_ecsw=False):
     return elapsed_time, relative_error
 
 if __name__ == "__main__":
-    main(mu1=5.19, mu2= 0.026, compute_ecsw=False)
+    main(mu1=4.75, mu2= 0.02, compute_ecsw=False)

@@ -9,6 +9,7 @@ import pdb
 class RNM_NN(nn.Module):
     def __init__(self, q1_size, q2_size):
         super(RNM_NN, self).__init__()
+        
         self.elu_stack = nn.Sequential(
             nn.Linear(q1_size, 32),
             nn.ELU(),
@@ -21,7 +22,11 @@ class RNM_NN(nn.Module):
             nn.Linear(256, 256),
             nn.ELU(),
             nn.Linear(256, q2_size)
-
+        #self.elu_stack = nn.Sequential(
+        #    nn.Linear(q1_size, 1400),
+        #    nn.ELU(),
+        #    nn.Linear(1400, q2_size) 
+        
             # nn.Linear(q1_size, int(pow(q2_size*q1_size,1/2))),
             # nn.ELU(),
             # nn.Linear(int(pow(q2_size*q1_size,1/2)), int(pow(q2_size*q1_size,3/4))),
@@ -29,7 +34,8 @@ class RNM_NN(nn.Module):
             # nn.Linear(int(pow(q2_size*q1_size,3/4)), int(pow(q2_size*q1_size, 4/5))),
             # nn.ELU(),
             # nn.Linear(int(pow(q2_size*q1_size, 4/5)), q2_size)
-        )
+         
+         )
 
     def forward(self, z):
         xhu = self.elu_stack(z)

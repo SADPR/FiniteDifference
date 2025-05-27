@@ -97,7 +97,7 @@ def main(mu1=5.19, mu2=0.026):
     #print(f'Snapshot saved as pod_rbf_prom_snaps_mu1_{mu[0]:.2f}_mu2_{mu[1]:.3f}.npy')
 
     # Plot and compare snapshots (currently commented out)
-    
+    '''
     inds_to_plot = range(0, NUM_STEPS + 1, 100)
     snaps_to_plot = [hdm_snaps, pod_rbf_prom_snaps]
     labels = ['HDM', 'POD-RBF']
@@ -111,7 +111,7 @@ def main(mu1=5.19, mu2=0.026):
     plt.legend(loc=2)
     plt.savefig(f'plot_mu1_{mu[0]:.2f}_mu2_{mu[1]:.3f}.png', dpi=300)
     plt.show()
-    
+    '''
     
     
 
